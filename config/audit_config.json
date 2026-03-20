@@ -1,0 +1,130 @@
+{
+  "audit_settings": {
+    "name": "Deep Agents Google Ads Audit",
+    "version": "1.0.0",
+    "date_created": "2026-03-17",
+    "audit_timezone": "America/New_York"
+  },
+  "audit_modules": {
+    "google_ads": {
+      "enabled": true,
+      "priority": 1,
+      "checks_total": 46,
+      "categories": [
+        "account_structure",
+        "campaign_settings",
+        "bidding_strategy",
+        "quality_score",
+        "keywords",
+        "ad_copy",
+        "conversion_tracking",
+        "budget_allocation",
+        "negative_keywords"
+      ],
+      "severity_weights": {
+        "critical": 1.0,
+        "high": 0.75,
+        "medium": 0.5,
+        "low": 0.25
+      }
+    },
+    "google_analytics": {
+      "enabled": true,
+      "priority": 2,
+      "checks_total": 30,
+      "categories": [
+        "ga4_implementation",
+        "event_tracking",
+        "conversion_funnel",
+        "data_quality",
+        "user_journey",
+        "utm_parameters",
+        "data_discrepancies"
+      ]
+    },
+    "meta_ads": {
+      "enabled": true,
+      "priority": 1,
+      "checks_total": 46,
+      "categories": [
+        "campaign_structure",
+        "pixel_health",
+        "capi_health",
+        "audience_targeting",
+        "creative_performance",
+        "learning_phase",
+        "budget_efficiency"
+      ]
+    }
+  },
+  "report_sections": [
+    {
+      "name": "executive_summary",
+      "enabled": true,
+      "order": 1,
+      "include_score": true
+    },
+    {
+      "name": "google_ads_audit",
+      "enabled": true,
+      "order": 2,
+      "include_metrics": true
+    },
+    {
+      "name": "google_analytics_audit",
+      "enabled": true,
+      "order": 3,
+      "include_metrics": true
+    },
+    {
+      "name": "meta_ads_audit",
+      "enabled": true,
+      "order": 4,
+      "include_metrics": true
+    },
+    {
+      "name": "findings",
+      "enabled": true,
+      "order": 5,
+      "sort_by": "severity"
+    },
+    {
+      "name": "action_plan",
+      "enabled": true,
+      "order": 6,
+      "prioritize": true,
+      "max_items": 15
+    }
+  ],
+  "scoring": {
+    "algorithm": "weighted_average",
+    "min_score": 0,
+    "max_score": 100,
+    "pass_threshold": 75,
+    "scales": {
+      "0-25": "Critical",
+      "26-50": "High Priority",
+      "51-75": "Medium Priority",
+      "76-100": "Optimal"
+    }
+  },
+  "output": {
+    "formats": ["pdf", "json", "html"],
+    "pdf_settings": {
+      "page_size": "A4",
+      "orientation": "portrait",
+      "margins": "20mm",
+      "include_cover_page": true,
+      "include_toc": true,
+      "include_footer": true
+    },
+    "directory": "reports/"
+  },
+  "deepagents_config": {
+    "planning_enabled": true,
+    "sub_agents_enabled": true,
+    "parallel_execution": true,
+    "memory_persistence": true,
+    "context_window": 8000
+  }
+}

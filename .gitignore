@@ -1,0 +1,26 @@
+# Credentials — never commit
+config/credentials.env
+*.env
+!*.env.example
+!config/credentials.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+dist/
+*.egg-info/
+
+# Reports (generated output)
+reports/*.pdf
+reports/*.html
+reports/cron.log
+
+# macOS
+.DS_Store
+._*
+
+# IDE
+.vscode/
+.idea/

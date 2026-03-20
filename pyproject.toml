@@ -1,0 +1,21 @@
+[project]
+name = "secondstep-audit-agent"
+version = "1.0.0"
+description = "Performance Marketing Audit Agent — Second Step Agency"
+requires-python = ">=3.11"
+
+dependencies = [
+    "deepagents>=0.3.0",
+    "langchain-anthropic>=0.4.0",
+    "langchain-google-genai>=2.0.0",
+    "google-ads>=22.0.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+windsor = ["requests>=2.31.0"]
+pdf = ["pdfkit>=1.0.0"]
+dev = ["pytest>=7.0", "ruff>=0.1.0"]

@@ -1,0 +1,70 @@
+{
+  "brand": {
+    "name": "Second Step Agency",
+    "website": "https://getsecondstep.com",
+    "contact_email": "growth@shivendrarawat.com"
+  },
+  "colors": {
+    "primary_dark": "#1b1b1b",
+    "accent_orange": "#E87811",
+    "text_white": "#ffffff",
+    "text_light_gray": "#e0e0e0",
+    "border_dark": "#333333",
+    "success_green": "#4caf50",
+    "warning_yellow": "#ff9800",
+    "critical_red": "#f44336"
+  },
+  "typography": {
+    "font_primary": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    "font_mono": "'Courier New', monospace",
+    "line_height": 1.6,
+    "heading_weight": 700,
+    "body_weight": 400,
+    "sizes": {
+      "h1": "32px",
+      "h2": "24px",
+      "h3": "20px",
+      "body": "14px",
+      "small": "12px"
+    }
+  },
+  "spacing": {
+    "section_padding": "40px",
+    "element_gap": "20px",
+    "border_radius": "4px"
+  },
+  "report": {
+    "page_width": "1200px",
+    "print_format": "A4",
+    "margin": "20px",
+    "header_height": "120px",
+    "footer_height": "60px"
+  },
+  "audit_scoring": {
+    "critical": {
+      "score": 0,
+      "color": "#f44336",
+      "label": "Critical"
+    },
+    "high": {
+      "score": 25,
+      "color": "#ff9800",
+      "label": "High Priority"
+    },
+    "medium": {
+      "score": 50,
+      "color": "#ffc107",
+      "label": "Medium Priority"
+    },
+    "low": {
+      "score": 75,
+      "color": "#4caf50",
+      "label": "Low Priority"
+    },
+    "optimal": {
+      "score": 100,
+      "color": "#2e7d32",
+      "label": "Optimal"
+    }
+  }
+}
