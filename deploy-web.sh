@@ -100,7 +100,7 @@ server {
 
     # Gzip
     gzip on;
-    gzip_types text/html text/css application/javascript;
+    gzip_types text/css application/javascript;
 }
 EOF
 
@@ -122,7 +122,7 @@ if [ "$SERVER_IP" = "$DOMAIN_IP" ]; then
     info "DNS confirmed — requesting SSL certificate..."
     certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" \
         --non-interactive --agree-tos --email admin@getsecondstep.com \
-        --redirect
+        --redirect --expand
     success "SSL certificate installed — https://$DOMAIN is live"
 else
     warn "DNS not yet pointed to this server ($SERVER_IP)."
