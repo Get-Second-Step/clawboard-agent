@@ -115,7 +115,7 @@ if ! command -v certbot &>/dev/null; then
 fi
 
 # Only run certbot if DNS is already pointing to this server
-SERVER_IP=$(curl -s ifconfig.me 2>/dev/null)
+SERVER_IP=$(curl -4 -s ifconfig.me 2>/dev/null || hostname -I | tr ' ' '\n' | grep -v ':' | head -1)
 DOMAIN_IP=$(dig +short "$DOMAIN" 2>/dev/null | head -1)
 
 if [ "$SERVER_IP" = "$DOMAIN_IP" ]; then
@@ -137,11 +137,7 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}  Website deployed!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "  Pages live at:"
-echo -e "  ${GREEN}➜${NC}  http://$DOMAIN/"
-echo -e "  ${GREEN}➜${NC}  http://$DOMAIN/upgrade.html"
-echo -e "  ${GREEN}➜${NC}  http://$DOMAIN/docs/installation.html"
-echo -e "  ${GREEN}➜${NC}  http://$DOMAIN/docs/how-it-works.html"
+echo -e "  ${GREEN}➜  https://$DOMAIN${NC}  ← landing page"
 echo ""
-echo -e "  ClawBoard agent UI still at: http://$SERVER_IP:3000"
+echo -e "  ClawBoard agent UI: ${GREEN}http://$SERVER_IP:3000${NC}"
 echo ""
