@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClawBoard — Agent Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Root ─────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:       #07080d;
+  --surface:  #0c0e16;
+  --surface2: #111420;
+  --border:   rgba(255,255,255,0.06);
+  --border2:  rgba(255,255,255,0.12);
+  --text:     #e8eaf0;
+  --muted:    #5a6075;
+  --dim:      #333749;
+  --amber:    #FFB327;
+  --amber-dim:rgba(255,179,39,0.12);
+  --amber-glow:rgba(255,179,39,0.25);
+  --orange:   #E87811;
+  --red:      #ff3b3b;
+  --green:    #22c55e;
+  --cyan:     #38d9f5;
+  --sidebar-w:220px;
+  --header-h: 52px;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.5;cursor:default;}
+
+/* Scanline overlay */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);
+}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+.layout{display:flex;height:100vh;}
+.sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:10;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+.sidebar-logo{padding:16px 20px 14px;border-bottom:1px solid var(--border);}
+.logo-mark{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;letter-spacing:-0.02em;color:var(--text);}
+.logo-mark span{color:var(--amber);}
+.logo-tag{font-size:9px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;}
+
+.sidebar-section{padding:12px 12px 4px;font-size:9px;color:var(--dim);letter-spacing:0.14em;text-transform:uppercase;font-weight:500;}
+
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;color:var(--muted);cursor:pointer;transition:all 0.12s;font-size:12px;border-left:2px solid transparent;margin-bottom:1px;}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.03);}
+.nav-item.active{color:var(--amber);background:var(--amber-dim);border-left-color:var(--amber);}
+.nav-icon{font-size:14px;width:16px;text-align:center;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--amber);color:#07080d;font-size:9px;font-weight:700;padding:1px 5px;border-radius:2px;font-family:'Syne',sans-serif;}
+.nav-badge.red{background:var(--red);}
+
+.sidebar-status{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);}
+.status-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);padding:4px 0;}
+.status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.status-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green);}
+.status-dot.warn{background:var(--amber);box-shadow:0 0 6px var(--amber);animation:pulse 2s infinite;}
+.status-dot.err{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.header{height:var(--header-h);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;}
+.header-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);}
+.header-breadcrumb{font-size:11px;color:var(--dim);}
+.header-breadcrumb span{color:var(--muted);}
+.header-spacer{flex:1;}
+.header-pill{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--muted);}
+.header-pill .dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);}
+.header-action{padding:6px 14px;background:var(--amber);color:#07080d;font-family:'Syne',sans-serif;font-size:11px;font-weight:800;cursor:pointer;border:none;letter-spacing:0.04em;transition:all 0.12s;}
+.header-action:hover{background:#ffc042;}
+
+/* ── Views ────────────────────────────────────────────────────────── */
+.view{display:none;flex:1;overflow:hidden;}
+.view.active{display:flex;flex-direction:column;}
+
+/* ── Dashboard ────────────────────────────────────────────────────── */
+.dashboard{padding:24px;overflow-y:auto;height:100%;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto 1fr;gap:12px;align-content:start;}
+
+.stat-card{background:var(--surface);border:1px solid var(--border);padding:18px 20px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--amber);}
+.stat-card.green::before{background:var(--green);}
+.stat-card.red::before{background:var(--red);}
+.stat-label{font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;}
+.stat-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-0.03em;line-height:1;}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:6px;}
+.stat-sub em{color:var(--green);font-style:normal;}
+.stat-sub em.warn{color:var(--amber);}
+.stat-sub em.err{color:var(--red);}
+
+.panel{background:var(--surface);border:1px solid var(--border);overflow:hidden;}
+.panel-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.panel-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);}
+.panel-action{font-size:10px;color:var(--amber);cursor:pointer;}
+.panel-action:hover{text-decoration:underline;}
+.panel-body{padding:12px 16px;}
+
+/* Platform grid */
+.plat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.plat-card{padding:12px;border:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color 0.12s;}
+.plat-card:hover{border-color:var(--border2);}
+.plat-card.connected{border-color:rgba(34,197,94,0.3);}
+.plat-icon{font-size:20px;flex-shrink:0;}
+.plat-info .name{font-size:12px;color:var(--text);}
+.plat-info .status{font-size:10px;color:var(--muted);margin-top:2px;}
+.plat-info .status.ok{color:var(--green);}
+.plat-info .status.disconnected{color:var(--red);}
+
+/* Activity feed */
+.activity-feed{display:flex;flex-direction:column;gap:0;}
+.activity-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.activity-item:last-child{border-bottom:none;}
+.activity-time{font-size:10px;color:var(--dim);flex-shrink:0;padding-top:1px;width:54px;}
+.activity-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.activity-text{font-size:12px;color:var(--muted);}
+.activity-text strong{color:var(--text);}
+
+/* Agents table */
+.agent-table{width:100%;border-collapse:collapse;}
+.agent-table th{text-align:left;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);padding:0 0 10px;font-weight:500;}
+.agent-table td{padding:9px 0;border-bottom:1px solid var(--border);vertical-align:middle;}
+.agent-table tr:last-child td{border-bottom:none;}
+.agent-name{font-size:12px;color:var(--text);}
+.agent-desc{font-size:10px;color:var(--muted);}
+.agent-status{display:inline-flex;align-items:center;gap:5px;font-size:10px;}
+.tag{padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;font-family:'Syne',sans-serif;}
+.tag.idle{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.tag.running{background:rgba(255,179,39,0.15);color:var(--amber);border:1px solid rgba(255,179,39,0.3);}
+.tag.ok{background:rgba(34,197,94,0.1);color:var(--green);border:1px solid rgba(34,197,94,0.25);}
+.tag.error{background:rgba(255,59,59,0.1);color:var(--red);border:1px solid rgba(255,59,59,0.25);}
+.run-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.12s;}
+.run-btn:hover{border-color:var(--amber);color:var(--amber);}
+
+/* span full width */
+.full-2{grid-column:1/3;}
+.full-3{grid-column:1/4;}
+
+/* ── Chat View ────────────────────────────────────────────────────── */
+.chat-layout{display:flex;flex:1;overflow:hidden;}
+.chat-sidebar{width:200px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.chat-sidebar-head{padding:12px 14px;border-bottom:1px solid var(--border);font-size:10px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase;}
+.cmd-list{overflow-y:auto;flex:1;padding:8px;}
+.cmd-item{padding:8px 10px;cursor:pointer;font-size:11px;color:var(--muted);border-radius:2px;margin-bottom:2px;line-height:1.4;}
+.cmd-item:hover{background:var(--surface2);color:var(--text);}
+.cmd-item .cmd-key{color:var(--amber);display:block;margin-bottom:2px;}
+.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px;}
+.msg{display:flex;gap:12px;max-width:780px;}
+.msg.user{align-self:flex-end;flex-direction:row-reverse;}
+.msg-avatar{width:28px;height:28px;border-radius:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:'Syne',sans-serif;}
+.msg.agent .msg-avatar{background:var(--amber);color:#07080d;}
+.msg.user .msg-avatar{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.msg-bubble{background:var(--surface);border:1px solid var(--border);padding:12px 14px;font-size:12.5px;line-height:1.7;color:var(--text);max-width:600px;}
+.msg.user .msg-bubble{background:var(--surface2);}
+.msg-bubble pre{background:var(--bg);border:1px solid var(--border);padding:10px;margin-top:8px;overflow-x:auto;font-size:11px;}
+.typing-dots span{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--amber);margin-right:3px;animation:bounce 1.2s infinite;}
+.typing-dots span:nth-child(2){animation-delay:0.2s}
+.typing-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+
+.chat-input-area{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:flex-end;}
+.chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;resize:none;outline:none;transition:border-color 0.12s;min-height:44px;max-height:140px;}
+.chat-input:focus{border-color:var(--amber);}
+.chat-input::placeholder{color:var(--dim);}
+.send-btn{background:var(--amber);color:#07080d;border:none;padding:11px 18px;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;transition:all 0.12s;height:44px;}
+.send-btn:hover{background:#ffc042;}
+.send-btn:disabled{background:var(--dim);cursor:not-allowed;}
+
+/* Quick commands row */
+.quick-row{padding:0 24px 14px;display:flex;gap:6px;flex-wrap:wrap;}
+.qcmd{padding:5px 12px;background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--muted);cursor:pointer;transition:all 0.1s;font-family:'JetBrains Mono',monospace;}
+.qcmd:hover{border-color:var(--amber);color:var(--amber);}
+
+/* ── Connect View ─────────────────────────────────────────────────── */
+.connect-view{padding:24px;overflow-y:auto;max-width:720px;}
+.connect-view h2{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;}
+.connect-view .sub{color:var(--muted);font-size:12px;margin-bottom:28px;}
+.platform-block{background:var(--surface);border:1px solid var(--border);margin-bottom:12px;overflow:hidden;}
+.platform-block.connected{border-color:rgba(34,197,94,0.25);}
+.pb-header{padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;}
+.pb-icon{font-size:22px;}
+.pb-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.pb-status-text{font-size:11px;margin-top:2px;}
+.pb-status-text.ok{color:var(--green);}
+.pb-status-text.disconnected{color:var(--muted);}
+.pb-chevron{margin-left:auto;color:var(--dim);font-size:14px;transition:transform 0.2s;}
+.pb-header.open .pb-chevron{transform:rotate(90deg);}
+.pb-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border);}
+.pb-body.open{display:block;}
+.form-row{margin-bottom:12px;}
+.form-label{font-size:10px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px;}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;transition:border-color 0.12s;}
+.form-input:focus{border-color:var(--amber);}
+.form-hint{font-size:10px;color:var(--dim);margin-top:4px;}
+.save-btn{padding:9px 20px;background:var(--amber);color:#07080d;border:none;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;cursor:pointer;margin-top:8px;}
+.save-btn:hover{background:#ffc042;}
+.oauth-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;background:transparent;border:1px solid var(--border2);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;margin-top:8px;transition:all 0.12s;}
+.oauth-btn:hover{border-color:var(--amber);color:var(--amber);}
+.limit-bar{background:var(--surface2);border:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+.limit-label{font-size:11px;color:var(--muted);}
+.limit-badge{padding:3px 8px;background:var(--amber-dim);border:1px solid var(--amber-glow);color:var(--amber);font-size:10px;font-family:'Syne',sans-serif;font-weight:700;}
+.upgrade-link{color:var(--amber);font-size:11px;margin-left:auto;cursor:pointer;}
+.upgrade-link:hover{text-decoration:underline;}
+
+/* ── Reports View ─────────────────────────────────────────────────── */
+.reports-view{padding:24px;overflow-y:auto;max-width:900px;}
+.reports-view h2{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.02em;margin-bottom:24px;}
+.report-table{width:100%;border-collapse:collapse;}
+.report-table th{text-align:left;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);padding:0 12px 10px 0;font-weight:500;}
+.report-table td{padding:11px 12px 11px 0;border-bottom:1px solid var(--border);vertical-align:middle;}
+.report-table tr:hover td{background:rgba(255,255,255,0.01);}
+.report-name{font-size:12px;color:var(--text);}
+.report-date{font-size:11px;color:var(--muted);}
+.report-size{font-size:11px;color:var(--dim);}
+.report-link{color:var(--amber);font-size:11px;cursor:pointer;}
+.report-link:hover{text-decoration:underline;}
+.empty-state{text-align:center;padding:60px 0;color:var(--muted);}
+.empty-state .icon{font-size:40px;margin-bottom:12px;opacity:0.3;}
+.empty-state p{font-size:12px;}
+
+/* ── Settings View ────────────────────────────────────────────────── */
+.settings-view{padding:24px;overflow-y:auto;max-width:600px;}
+.settings-view h2{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.02em;margin-bottom:24px;}
+.settings-section{margin-bottom:28px;}
+.settings-section h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.toggle-row:last-child{border-bottom:none;}
+.toggle-info .name{font-size:12px;color:var(--text);}
+.toggle-info .desc{font-size:10px;color:var(--muted);margin-top:2px;}
+.toggle{width:36px;height:20px;background:var(--dim);border-radius:10px;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;}
+.toggle.on{background:var(--amber);}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;background:white;border-radius:50%;top:3px;left:3px;transition:transform 0.2s;}
+.toggle.on::after{transform:translateX(16px);}
+.info-banner{background:var(--amber-dim);border:1px solid var(--amber-glow);padding:12px 16px;display:flex;gap:10px;margin-bottom:20px;}
+.info-banner .ico{color:var(--amber);flex-shrink:0;}
+.info-banner p{font-size:11px;color:var(--muted);line-height:1.6;}
+.info-banner p strong{color:var(--text);}
+.danger-btn{padding:8px 16px;background:transparent;border:1px solid rgba(255,59,59,0.4);color:var(--red);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.12s;}
+.danger-btn:hover{background:rgba(255,59,59,0.08);}
+
+/* ── Notifications ────────────────────────────────────────────────── */
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{background:var(--surface);border:1px solid var(--border);padding:12px 16px;font-size:12px;color:var(--text);min-width:240px;opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:auto;display:flex;align-items:center;gap:8px;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.ok{border-left:3px solid var(--green);}
+.toast.error{border-left:3px solid var(--red);}
+.toast.info{border-left:3px solid var(--amber);}
+
+/* ── Scrollbars ───────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--dim);}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media(max-width:700px){
+  .sidebar{display:none}
+  .dashboard{grid-template-columns:1fr;}
+  .full-2,.full-3{grid-column:auto;}
+  .plat-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Claw<span>Board</span></div>
+      <div class="logo-tag">Agent Control · v1</div>
+    </div>
+
+    <div class="sidebar-section">Main</div>
+    <div class="nav-item active" onclick="nav('dashboard')">
+      <span class="nav-icon">◈</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="nav('chat')">
+      <span class="nav-icon">⬡</span> Chat Agent
+    </div>
+
+    <div class="sidebar-section">Platform</div>
+    <div class="nav-item" onclick="nav('connect')">
+      <span class="nav-icon">⊕</span> Connect
+    </div>
+    <div class="nav-item" onclick="nav('reports')">
+      <span class="nav-icon">◫</span> Reports
+    </div>
+
+    <div class="sidebar-section">System</div>
+    <div class="nav-item" onclick="nav('settings')">
+      <span class="nav-icon">⚙</span> Settings
+    </div>
+    <div class="nav-item" onclick="openUpgrade()">
+      <span class="nav-icon">↑</span> Upgrade Pro
+      <span class="nav-badge">$89</span>
+    </div>
+
+    <div class="sidebar-status">
+      <div class="status-row">
+        <div class="status-dot ok" id="svc-openclaw"></div>
+        <span>OpenClaw</span>
+      </div>
+      <div class="status-row">
+        <div class="status-dot warn" id="svc-nemoclaw"></div>
+        <span>NemoClaw</span>
+      </div>
+      <div class="status-row">
+        <div class="status-dot" id="svc-agent" style="background:var(--dim)"></div>
+        <span>Agent</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title" id="hdr-title">Dashboard</div>
+      <div class="header-breadcrumb"><span id="hdr-sub">System overview</span></div>
+      <div class="header-spacer"></div>
+      <div class="header-pill">
+        <div class="dot"></div>
+        <span id="hdr-account">No account</span>
+      </div>
+      <button class="header-action" onclick="runAudit()">▶ Run Audit</button>
+    </div>
+
+    <!-- ── DASHBOARD ──────────────────────────────────────────────── -->
+    <div class="view active" id="view-dashboard">
+      <div class="dashboard">
+
+        <div class="stat-card">
+          <div class="stat-label">Accounts Connected</div>
+          <div class="stat-value" id="stat-accounts">0</div>
+          <div class="stat-sub" id="stat-accounts-sub"><em class="warn">Connect a platform →</em></div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Last Audit</div>
+          <div class="stat-value" id="stat-last-audit">—</div>
+          <div class="stat-sub" id="stat-audit-sub" style="color:var(--dim)">No audits run yet</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">NemoClaw</div>
+          <div class="stat-value" id="stat-nemo">—</div>
+          <div class="stat-sub" id="stat-nemo-sub" style="color:var(--dim)">Checking...</div>
+        </div>
+
+        <!-- Platforms -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Platforms</div>
+            <div class="panel-action" onclick="nav('connect')">+ Connect</div>
+          </div>
+          <div class="panel-body">
+            <div class="plat-grid" id="platform-grid">
+              <div class="plat-card" onclick="nav('connect')">
+                <div class="plat-icon">📊</div>
+                <div class="plat-info"><div class="name">Google Ads</div><div class="status disconnected" id="ps-google">Not connected</div></div>
+              </div>
+              <div class="plat-card" onclick="nav('connect')">
+                <div class="plat-icon">📘</div>
+                <div class="plat-info"><div class="name">Meta Ads</div><div class="status disconnected" id="ps-meta">Not connected</div></div>
+              </div>
+              <div class="plat-card" onclick="nav('connect')">
+                <div class="plat-icon">📈</div>
+                <div class="plat-info"><div class="name">GA4</div><div class="status disconnected" id="ps-ga4">Not connected</div></div>
+              </div>
+              <div class="plat-card" onclick="nav('connect')">
+                <div class="plat-icon">🔗</div>
+                <div class="plat-info"><div class="name">MCC</div><div class="status disconnected" id="ps-mcc">Not connected</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agents -->
+        <div class="panel full-2" id="agents-panel">
+          <div class="panel-head">
+            <div class="panel-title">Agents</div>
+            <div class="panel-action" onclick="nav('chat')">Open Chat →</div>
+          </div>
+          <div class="panel-body" style="padding:0 16px;">
+            <table class="agent-table">
+              <thead>
+                <tr>
+                  <th>Agent</th>
+                  <th>Last Run</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="agents-table-body">
+                <tr>
+                  <td><div class="agent-name">Audit Agent</div><div class="agent-desc">122 checks · Google Ads, Meta, GA4</div></td>
+                  <td class="report-date">Never</td>
+                  <td><span class="tag idle">Idle</span></td>
+                  <td><button class="run-btn" onclick="runAudit()">Run →</button></td>
+                </tr>
+                <tr>
+                  <td><div class="agent-name">Listen Agent</div><div class="agent-desc">Real-time budget alerts</div></td>
+                  <td class="report-date">—</td>
+                  <td><span class="tag error">Pro Only</span></td>
+                  <td><button class="run-btn" onclick="openUpgrade()">Upgrade</button></td>
+                </tr>
+                <tr>
+                  <td><div class="agent-name">CEO Agent</div><div class="agent-desc">Weekly executive brief</div></td>
+                  <td class="report-date">—</td>
+                  <td><span class="tag error">Pro Only</span></td>
+                  <td><button class="run-btn" onclick="openUpgrade()">Upgrade</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Activity -->
+        <div class="panel full-3" id="activity-panel">
+          <div class="panel-head">
+            <div class="panel-title">Activity</div>
+          </div>
+          <div class="panel-body" id="activity-feed">
+            <div class="activity-item">
+              <div class="activity-time">Just now</div>
+              <div class="activity-dot" style="background:var(--green)"></div>
+              <div class="activity-text"><strong>ClawBoard started</strong> — OpenClaw gateway online</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-time">—</div>
+              <div class="activity-dot" style="background:var(--dim)"></div>
+              <div class="activity-text">Connect a platform to begin auditing</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── CHAT ───────────────────────────────────────────────────── -->
+    <div class="view" id="view-chat">
+      <div class="chat-layout">
+        <div class="chat-sidebar">
+          <div class="chat-sidebar-head">Quick Commands</div>
+          <div class="cmd-list">
+            <div class="cmd-item" onclick="sendCommand('Run full Google Ads audit')">
+              <span class="cmd-key">audit</span>Run full audit
+            </div>
+            <div class="cmd-item" onclick="sendCommand('Check budget pacing for all campaigns')">
+              <span class="cmd-key">budget</span>Budget pacing check
+            </div>
+            <div class="cmd-item" onclick="sendCommand('Show top performing keywords')">
+              <span class="cmd-key">keywords</span>Top keywords
+            </div>
+            <div class="cmd-item" onclick="sendCommand('Check Quality Scores across all campaigns')">
+              <span class="cmd-key">quality</span>Quality scores
+            </div>
+            <div class="cmd-item" onclick="sendCommand('Show wasted spend this month')">
+              <span class="cmd-key">waste</span>Wasted spend
+            </div>
+            <div class="cmd-item" onclick="sendCommand('Check conversion tracking health')">
+              <span class="cmd-key">conv</span>Conversion tracking
+            </div>
+            <div class="cmd-item" onclick="sendCommand('Summarise last 7 days performance')">
+              <span class="cmd-key">summary</span>7-day summary
+            </div>
+            <div class="cmd-item" onclick="sendCommand('Show all active campaigns and status')">
+              <span class="cmd-key">campaigns</span>Campaign status
+            </div>
+          </div>
+        </div>
+        <div class="chat-main">
+          <div class="messages" id="messages">
+            <div class="msg agent">
+              <div class="msg-avatar">C</div>
+              <div class="msg-bubble">
+                <strong>ClawBoard Agent ready.</strong><br><br>
+                Ask me anything about your ad accounts, or pick a quick command on the left.<br><br>
+                <span style="color:var(--muted)">Examples: "Why did CPA spike yesterday?", "Pause campaigns with ROAS below 1.5", "Show me the full audit report"</span>
+              </div>
+            </div>
+          </div>
+          <div class="quick-row" id="quick-row">
+            <span class="qcmd" onclick="sendCommand('Run full Google Ads audit')">▶ Run audit</span>
+            <span class="qcmd" onclick="sendCommand('Check budget pacing for all campaigns')">Budget pacing</span>
+            <span class="qcmd" onclick="sendCommand('Show wasted spend this month')">Wasted spend</span>
+            <span class="qcmd" onclick="sendCommand('Summarise last 7 days performance')">7-day summary</span>
+          </div>
+          <div class="chat-input-area">
+            <textarea class="chat-input" id="chat-input" placeholder="Ask anything about your ad accounts..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+            <button class="send-btn" id="send-btn" onclick="sendChat()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CONNECT ─────────────────────────────────────────────────── -->
+    <div class="view" id="view-connect">
+      <div class="connect-view">
+        <h2>Connect Platforms</h2>
+        <p class="sub">Your credentials are stored only on this server. Nothing leaves your VPS.</p>
+
+        <div class="limit-bar">
+          <div class="status-dot ok"></div>
+          <div class="limit-label">Open Source — <strong>1 account</strong> at a time</div>
+          <div class="limit-badge">FREE</div>
+          <span class="upgrade-link" onclick="openUpgrade()">Upgrade for unlimited →</span>
+        </div>
+
+        <!-- Google Ads -->
+        <div class="platform-block" id="pb-google">
+          <div class="pb-header" onclick="togglePlatform('google')">
+            <div class="pb-icon">📊</div>
+            <div>
+              <div class="pb-name">Google Ads</div>
+              <div class="pb-status-text disconnected" id="pb-google-status">Not connected</div>
+            </div>
+            <div class="pb-chevron">›</div>
+          </div>
+          <div class="pb-body" id="pb-google-body">
+            <form onsubmit="savePlatform(event,'google')">
+              <div style="height:12px"></div>
+              <div class="form-row">
+                <div class="form-label">Customer ID</div>
+                <input class="form-input" id="gads-customer-id" name="GOOGLE_ADS_CUSTOMER_ID" placeholder="123-456-7890">
+              </div>
+              <div class="form-row">
+                <div class="form-label">Developer Token</div>
+                <input class="form-input" id="gads-dev-token" name="GOOGLE_ADS_DEVELOPER_TOKEN" type="password" placeholder="••••••••••••">
+                <div class="form-hint">Get from Google Ads API Center → your account settings</div>
+              </div>
+              <div class="form-row">
+                <div class="form-label">OAuth — Client ID & Secret</div>
+                <input class="form-input" id="gads-client-id" name="GOOGLE_CLIENT_ID" placeholder="xxxx.apps.googleusercontent.com" style="margin-bottom:6px">
+                <input class="form-input" id="gads-client-secret" name="GOOGLE_CLIENT_SECRET" type="password" placeholder="Client Secret">
+              </div>
+              <div class="form-row">
+                <div class="form-label">Refresh Token</div>
+                <input class="form-input" id="gads-refresh" name="GOOGLE_REFRESH_TOKEN" type="password" placeholder="1//0g...">
+                <div class="form-hint">Run: <code style="color:var(--amber)">python3 scripts/generate_google_token.py</code> to generate</div>
+              </div>
+              <button type="submit" class="save-btn">Save & Connect</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Meta Ads -->
+        <div class="platform-block" id="pb-meta">
+          <div class="pb-header" onclick="togglePlatform('meta')">
+            <div class="pb-icon">📘</div>
+            <div>
+              <div class="pb-name">Meta Ads</div>
+              <div class="pb-status-text disconnected" id="pb-meta-status">Not connected</div>
+            </div>
+            <div class="pb-chevron">›</div>
+          </div>
+          <div class="pb-body" id="pb-meta-body">
+            <div style="height:12px"></div>
+            <form onsubmit="savePlatform(event,'meta')">
+              <div class="form-row">
+                <div class="form-label">Access Token</div>
+                <input class="form-input" name="META_ACCESS_TOKEN" type="password" placeholder="EAAxxxxx...">
+              </div>
+              <div class="form-row">
+                <div class="form-label">Business Account ID</div>
+                <input class="form-input" name="META_BUSINESS_ACCOUNT_ID" placeholder="act_123456789">
+              </div>
+              <button type="submit" class="save-btn">Save & Connect</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- GA4 -->
+        <div class="platform-block" id="pb-ga4">
+          <div class="pb-header" onclick="togglePlatform('ga4')">
+            <div class="pb-icon">📈</div>
+            <div>
+              <div class="pb-name">Google Analytics 4</div>
+              <div class="pb-status-text disconnected" id="pb-ga4-status">Not connected</div>
+            </div>
+            <div class="pb-chevron">›</div>
+          </div>
+          <div class="pb-body" id="pb-ga4-body">
+            <div style="height:12px"></div>
+            <form onsubmit="savePlatform(event,'ga4')">
+              <div class="form-row">
+                <div class="form-label">Property ID</div>
+                <input class="form-input" name="GOOGLE_ANALYTICS_PROPERTY_ID" placeholder="properties/123456">
+                <div class="form-hint">Shares the OAuth refresh token with Google Ads</div>
+              </div>
+              <button type="submit" class="save-btn">Save</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Telegram -->
+        <div class="platform-block" id="pb-telegram">
+          <div class="pb-header" onclick="togglePlatform('telegram')">
+            <div class="pb-icon">✈️</div>
+            <div>
+              <div class="pb-name">Telegram Delivery</div>
+              <div class="pb-status-text disconnected" id="pb-telegram-status">Not configured</div>
+            </div>
+            <div class="pb-chevron">›</div>
+          </div>
+          <div class="pb-body" id="pb-telegram-body">
+            <div style="height:12px"></div>
+            <form onsubmit="savePlatform(event,'telegram')">
+              <div class="form-row">
+                <div class="form-label">Bot Token</div>
+                <input class="form-input" name="TELEGRAM_BOT_TOKEN" type="password" placeholder="123456:ABCdef...">
+                <div class="form-hint">Create via @BotFather on Telegram</div>
+              </div>
+              <div class="form-row">
+                <div class="form-label">Chat ID</div>
+                <input class="form-input" name="TELEGRAM_CHAT_ID" placeholder="-100123456789">
+              </div>
+              <button type="submit" class="save-btn">Save</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REPORTS ─────────────────────────────────────────────────── -->
+    <div class="view" id="view-reports">
+      <div class="reports-view">
+        <h2>Reports</h2>
+        <div id="reports-container">
+          <div class="empty-state">
+            <div class="icon">◫</div>
+            <p>No reports yet. Run an audit to generate your first report.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS ────────────────────────────────────────────────── -->
+    <div class="view" id="view-settings">
+      <div class="settings-view">
+        <h2>Settings</h2>
+        <div class="info-banner">
+          <div class="ico">⚑</div>
+          <p><strong>Your data stays on this server.</strong> Credentials are stored in <code style="color:var(--amber)">config/credentials.env</code> — never transmitted anywhere. License key validation is the only external call.</p>
+        </div>
+        <div class="settings-section">
+          <h3>Agency Branding</h3>
+          <form onsubmit="saveSettings(event)">
+            <div class="form-row">
+              <div class="form-label">Agency Name</div>
+              <input class="form-input" id="set-agency-name" name="AGENCY_NAME" placeholder="Your Agency Name">
+              <div class="form-hint">Appears on generated PDF reports</div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">Contact Email</div>
+              <input class="form-input" id="set-agency-email" name="AGENCY_EMAIL" placeholder="you@youragency.com">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Website</div>
+              <input class="form-input" id="set-agency-web" name="AGENCY_WEBSITE" placeholder="https://youragency.com">
+            </div>
+            <button type="submit" class="save-btn">Save Branding</button>
+          </form>
+        </div>
+        <div class="settings-section">
+          <h3>AI Model</h3>
+          <div class="form-row">
+            <div class="form-label">Gemini API Key</div>
+            <input class="form-input" id="set-gemini-key" name="GOOGLE_AI_API_KEY" type="password" placeholder="AIza...">
+            <div class="form-hint">Used by NemoClaw guardrails. Get free at aistudio.google.com</div>
+          </div>
+          <button class="save-btn" onclick="saveGeminiKey()">Update Key</button>
+        </div>
+        <div class="settings-section">
+          <h3>Schedule</h3>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="name">Daily Audit (9am)</div>
+              <div class="desc">Runs audit_agent.py every day at 9am via cron</div>
+            </div>
+            <div class="toggle on" id="toggle-cron" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="name">Telegram Delivery</div>
+              <div class="desc">Send audit results to Telegram bot</div>
+            </div>
+            <div class="toggle" id="toggle-telegram" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>Danger Zone</h3>
+          <button class="danger-btn" onclick="confirmClear()">Clear All Credentials</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ── Navigation ──────────────────────────────────────────────────────
+const VIEWS = ['dashboard','chat','connect','reports','settings'];
+const TITLES = {
+  dashboard: ['Dashboard','System overview'],
+  chat: ['Chat Agent','Talk to your ad accounts'],
+  connect: ['Connect','Link your ad platforms'],
+  reports: ['Reports','Generated audit reports'],
+  settings: ['Settings','Configure your ClawBoard'],
+};
+
+function nav(id) {
+  VIEWS.forEach(v => {
+    document.getElementById('view-'+v).classList.toggle('active', v===id);
+    const items = document.querySelectorAll('.nav-item');
+    items.forEach(el => {
+      if(el.getAttribute('onclick') === `nav('${v}')`) el.classList.toggle('active', v===id);
+    });
+  });
+  const t = TITLES[id] || [id,''];
+  document.getElementById('hdr-title').textContent = t[0];
+  document.getElementById('hdr-sub').textContent = t[1];
+  if(id==='reports') loadReports();
+  if(id==='settings') loadSettings();
+  if(id==='dashboard') loadStatus();
+}
+
+// ── Status / Health ─────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    updatePlatformStatus(d.platforms || {});
+    updateAccountStat(d.platforms || {});
+  } catch(e) {}
+  checkNemoClaw();
+  loadReportCount();
+}
+
+function updatePlatformStatus(p) {
+  const map = {google_ads:'google',meta_ads:'meta',ga4:'ga4',mcc:'mcc'};
+  Object.entries(map).forEach(([key, id]) => {
+    const el = document.getElementById('ps-'+id);
+    if(!el) return;
+    const ok = p[key];
+    el.textContent = ok ? 'Connected' : 'Not connected';
+    el.className = 'status ' + (ok ? 'ok' : 'disconnected');
+    const card = el.closest('.plat-card');
+    if(card) card.classList.toggle('connected', ok);
+    const pb = document.getElementById('pb-'+id+'-status');
+    if(pb){ pb.textContent = ok ? '● Connected' : 'Not connected'; pb.className='pb-status-text '+(ok?'ok':'disconnected');}
+    const block = document.getElementById('pb-'+id);
+    if(block) block.classList.toggle('connected', ok);
+  });
+}
+
+function updateAccountStat(p) {
+  const connected = Object.values(p).filter(Boolean).length;
+  document.getElementById('stat-accounts').textContent = connected;
+  const sub = document.getElementById('stat-accounts-sub');
+  sub.innerHTML = connected > 0
+    ? `<em>${connected} platform${connected>1?'s':''} active</em>`
+    : `<em class="warn">Connect a platform →</em>`;
+  const hdr = document.getElementById('hdr-account');
+  hdr.textContent = p.google_ads ? 'Google Ads ✓' : 'No account connected';
+}
+
+async function checkNemoClaw() {
+  try {
+    const r = await fetch('http://127.0.0.1:8080/health').catch(()=>fetch('/api/nemoclaw-health'));
+    const d = await r.json();
+    const dot = document.getElementById('svc-nemoclaw');
+    const val = document.getElementById('stat-nemo');
+    const sub = document.getElementById('stat-nemo-sub');
+    if(d.rails_loaded) {
+      dot.className='status-dot ok';
+      val.textContent='Active';
+      sub.innerHTML='<em>Rails loaded · Gemini</em>';
+    } else {
+      dot.className='status-dot warn';
+      val.textContent='Guard';
+      sub.innerHTML='<em class="warn">Validation-only mode</em>';
+    }
+  } catch(e) {
+    document.getElementById('svc-nemoclaw').className='status-dot err';
+    document.getElementById('stat-nemo').textContent='Down';
+    document.getElementById('stat-nemo-sub').innerHTML='<em class="err">Not reachable</em>';
+  }
+}
+
+async function loadReportCount() {
+  try {
+    const r = await fetch('/api/reports');
+    const d = await r.json();
+    const count = (d.reports||[]).length;
+    const val = document.getElementById('stat-last-audit');
+    const sub = document.getElementById('stat-audit-sub');
+    if(count > 0) {
+      const last = d.reports[0];
+      val.textContent = count;
+      sub.innerHTML = `<em>${last.name.slice(0,28)}...</em>`;
+    }
+  } catch(e) {}
+}
+
+// ── Chat ────────────────────────────────────────────────────────────
+let sending = false;
+
+function handleKey(e) {
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
+}
+
+function autoResize(el) {
+  el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,140)+'px';
+}
+
+function sendCommand(cmd) {
+  nav('chat');
+  setTimeout(()=>{
+    document.getElementById('chat-input').value=cmd;
+    sendChat();
+  },100);
+}
+
+async function sendChat() {
+  if(sending) return;
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value=''; autoResize(input);
+  sending=true;
+  document.getElementById('send-btn').disabled=true;
+
+  appendMsg('user', text);
+  const typingId = 'typing-'+Date.now();
+  appendMsg('agent', '<div class="typing-dots"><span></span><span></span><span></span></div>', typingId);
+  scrollMsgs();
+
+  try {
+    const r = await fetch('/api/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:text})
+    });
+    const d = await r.json();
+    const el = document.getElementById(typingId);
+    if(el) el.querySelector('.msg-bubble').innerHTML = formatMsg(d.reply || d.response || 'No response.');
+  } catch(e) {
+    const el = document.getElementById(typingId);
+    if(el) el.querySelector('.msg-bubble').innerHTML = '<span style="color:var(--red)">Error reaching agent. Is audit_agent.py running?</span>';
+  }
+  sending=false;
+  document.getElementById('send-btn').disabled=false;
+  scrollMsgs();
+}
+
+function appendMsg(role, html, id) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className='msg '+role;
+  if(id) div.id=id;
+  div.innerHTML=`<div class="msg-avatar">${role==='agent'?'C':'S'}</div><div class="msg-bubble">${html}</div>`;
+  msgs.appendChild(div);
+}
+
+function formatMsg(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n\n/g,'<br><br>')
+    .replace(/\n/g,'<br>')
+    .replace(/`(.*?)`/g,'<code style="color:var(--amber);background:var(--surface2);padding:1px 4px">$1</code>');
+}
+
+function scrollMsgs() {
+  const msgs = document.getElementById('messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Audit ───────────────────────────────────────────────────────────
+async function runAudit() {
+  nav('chat');
+  setTimeout(()=>sendCommand('Run full marketing audit across all connected platforms'), 100);
+}
+
+// ── Platform accordion ──────────────────────────────────────────────
+function togglePlatform(id) {
+  const header = document.querySelector(`#pb-${id} .pb-header`);
+  const body = document.getElementById(`pb-${id}-body`);
+  header.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+// ── Save platform creds ─────────────────────────────────────────────
+async function savePlatform(e, platform) {
+  e.preventDefault();
+  const form = e.target;
+  const data = {};
+  new FormData(form).forEach((v,k)=>{ if(v) data[k]=v; });
+  try {
+    const r = await fetch('/api/save-credentials', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+    });
+    const d = await r.json();
+    if(d.ok || d.saved) { toast('Credentials saved', 'ok'); loadStatus(); }
+    else toast(d.error||'Error saving', 'error');
+  } catch(e) { toast('Could not reach server','error'); }
+}
+
+// ── Reports ─────────────────────────────────────────────────────────
+async function loadReports() {
+  try {
+    const r = await fetch('/api/reports');
+    const d = await r.json();
+    const container = document.getElementById('reports-container');
+    if(!d.reports||!d.reports.length) {
+      container.innerHTML='<div class="empty-state"><div class="icon">◫</div><p>No reports yet. Run an audit to generate your first report.</p></div>';
+      return;
+    }
+    let rows = d.reports.map(rep=>`
+      <tr>
+        <td><div class="report-name">${rep.name}</div></td>
+        <td class="report-date">${rep.modified||'—'}</td>
+        <td class="report-size">${rep.size||'—'}</td>
+        <td><a class="report-link" href="/reports/${rep.name}" target="_blank">View →</a></td>
+      </tr>`).join('');
+    container.innerHTML=`<table class="report-table"><thead><tr><th>File</th><th>Date</th><th>Size</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  } catch(e) {}
+}
+
+// ── Settings ────────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const r = await fetch('/api/settings');
+    const d = await r.json();
+    if(d.AGENCY_NAME) document.getElementById('set-agency-name').value=d.AGENCY_NAME;
+    if(d.AGENCY_EMAIL) document.getElementById('set-agency-email').value=d.AGENCY_EMAIL;
+    if(d.AGENCY_WEBSITE) document.getElementById('set-agency-web').value=d.AGENCY_WEBSITE;
+  } catch(e) {}
+}
+
+async function saveSettings(e) {
+  e.preventDefault();
+  const data = {
+    AGENCY_NAME: document.getElementById('set-agency-name').value,
+    AGENCY_EMAIL: document.getElementById('set-agency-email').value,
+    AGENCY_WEBSITE: document.getElementById('set-agency-web').value,
+  };
+  try {
+    const r = await fetch('/api/save-credentials', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const d = await r.json();
+    if(d.ok||d.saved) toast('Branding saved','ok'); else toast('Error saving','error');
+  } catch(e) { toast('Could not reach server','error'); }
+}
+
+async function saveGeminiKey() {
+  const key = document.getElementById('set-gemini-key').value.trim();
+  if(!key) { toast('Enter a key first','error'); return; }
+  try {
+    const r = await fetch('/api/save-credentials', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({GOOGLE_AI_API_KEY:key,GOOGLE_API_KEY:key})});
+    const d = await r.json();
+    if(d.ok||d.saved) toast('Gemini key updated','ok'); else toast('Error saving','error');
+  } catch(e) { toast('Could not reach server','error'); }
+}
+
+function confirmClear() {
+  if(confirm('Clear ALL credentials? This cannot be undone.')) {
+    toast('Credentials cleared (restart server to apply)','info');
+  }
+}
+
+function openUpgrade() {
+  window.open('https://clawboard.pro/upgrade', '_blank');
+}
+
+// ── Toast ────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className=`toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),300); }, 3000);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────
+loadStatus();
+</script>
+</body>
+</html>

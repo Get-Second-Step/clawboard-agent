@@ -24,6 +24,7 @@ import uvicorn
 from dotenv import dotenv_values, load_dotenv, set_key
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 # ── Config ────────────────────────────────────────────────────────────────────
 PROJECT_DIR = Path(__file__).parent
@@ -36,6 +37,11 @@ OPEN_SOURCE_ACCOUNT_LIMIT = 1   # Upgrade to ClawBoard Pro for unlimited
 load_dotenv(CREDS_FILE)
 
 app = FastAPI(title="ClawBoard Pro", docs_url=None, redoc_url=None)
+
+# ── New UI (served from /ui/) ─────────────────────────────────────────────────
+UI_DIR = PROJECT_DIR / "ui"
+if UI_DIR.exists():
+    app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -401,6 +407,10 @@ QUICK_COMMANDS = [
 
 
 @app.get("/", response_class=HTMLResponse)
+async def root_redirect():
+    return RedirectResponse(url="/ui/app.html", status_code=302)
+
+@app.get("/legacy", response_class=HTMLResponse)
 async def chat_page(request: Request):
     s = platform_status()
     history = load_chat_history()
@@ -1210,6 +1220,53 @@ async def settings_save(request: Request):
         if value and "••••" not in str(value):
             save_cred(key, str(value))
     return RedirectResponse("/settings?saved=1", status_code=302)
+
+
+# ── JSON API (used by new UI) ──────────────────────────────────────────────────
+
+@app.get("/api/status")
+async def api_status():
+    return JSONResponse({"platforms": platform_status()})
+
+
+@app.get("/api/reports")
+async def api_reports():
+    items = []
+    for f in sorted(REPORTS_DIR.glob("*"), key=lambda x: x.stat().st_mtime, reverse=True):
+        if f.suffix in (".pdf", ".html") and f.is_file():
+            size_kb = round(f.stat().st_size / 1024, 1)
+            items.append({
+                "name": f.name,
+                "modified": datetime.fromtimestamp(f.stat().st_mtime).strftime("%d %b %Y %H:%M"),
+                "size": f"{size_kb} KB",
+            })
+    return JSONResponse({"reports": items})
+
+
+@app.get("/api/settings")
+async def api_settings():
+    c = creds()
+    safe_keys = ["AGENCY_NAME", "AGENCY_EMAIL", "AGENCY_WEBSITE", "TELEGRAM_CHAT_ID"]
+    return JSONResponse({k: c.get(k, "") for k in safe_keys})
+
+
+@app.post("/api/save-credentials")
+async def api_save_credentials(request: Request):
+    data = await request.json()
+    for key, value in data.items():
+        if value and "••" not in str(value):
+            save_cred(str(key), str(value))
+    return JSONResponse({"ok": True, "saved": list(data.keys())})
+
+
+@app.get("/api/nemoclaw-health")
+async def api_nemoclaw_health():
+    import urllib.request as ureq
+    try:
+        with ureq.urlopen("http://127.0.0.1:8080/health", timeout=2) as r:
+            return JSONResponse(json.loads(r.read()))
+    except Exception:
+        return JSONResponse({"status": "unreachable", "rails_loaded": False})
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
