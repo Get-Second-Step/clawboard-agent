@@ -30,6 +30,11 @@ except ImportError:
 logger = logging.getLogger("nemoclaw")
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "info").upper())
 
+# NeMo Guardrails (via LangChain Google GenAI) reads GOOGLE_API_KEY.
+# Accept GOOGLE_AI_API_KEY as an alias so users only need one key.
+if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GOOGLE_AI_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = os.environ["GOOGLE_AI_API_KEY"]
+
 app = FastAPI(title="NemoClaw", version="1.0.0", docs_url=None)
 
 # ── Load guardrails config ────────────────────────────────────────────────────

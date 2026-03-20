@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance Marketing Audit Agent — Second Step Agency
+Performance Marketing Audit Agent — ClawBoard
 
 A DeepAgents-powered audit agent that:
 1. Plans audit tasks using write_todos
@@ -46,6 +46,76 @@ from deepagents.backends import FilesystemBackend
 
 PROJECT_DIR = Path(__file__).parent
 console = Console()
+
+# ── Branding (configurable via credentials.env) ───────────────────────────────
+AGENCY_NAME    = os.environ.get("AGENCY_NAME", "")
+AGENCY_EMAIL   = os.environ.get("AGENCY_EMAIL", "")
+AGENCY_WEBSITE = os.environ.get("AGENCY_WEBSITE", "")
+
+
+# ──────────────────────────────────────────────
+# NemoClaw Guard — wraps every LLM prompt/output
+# ──────────────────────────────────────────────
+
+_NEMOCLAW_URL = os.environ.get("NEMOCLAW_URL", "http://127.0.0.1:8080")
+_nemoclaw_available: bool | None = None  # None = not yet probed
+
+
+def _probe_nemoclaw() -> bool:
+    """Check once whether NemoClaw is reachable."""
+    global _nemoclaw_available
+    if _nemoclaw_available is not None:
+        return _nemoclaw_available
+    try:
+        import requests
+        r = requests.get(f"{_NEMOCLAW_URL}/health", timeout=1)
+        _nemoclaw_available = r.ok
+    except Exception:
+        _nemoclaw_available = False
+    if not _nemoclaw_available:
+        console.print("[dim]NemoClaw not reachable — running without guardrails[/dim]")
+    return _nemoclaw_available
+
+
+def guard_input(prompt: str, source: str = "audit_agent") -> str:
+    """Pass prompt through NemoClaw input rail. Returns safe prompt or raises."""
+    if not _probe_nemoclaw():
+        return prompt
+    try:
+        import requests
+        r = requests.post(
+            f"{_NEMOCLAW_URL}/guard/input",
+            json={"prompt": prompt, "source": source},
+            timeout=5,
+        )
+        data = r.json()
+        if not data.get("safe", True):
+            raise ValueError(f"[NemoClaw] Blocked: {data.get('blocked_reason', 'unknown')}")
+        return data.get("output", prompt)
+    except ValueError:
+        raise
+    except Exception:
+        return prompt  # fail open — audit must not break
+
+
+def guard_output(output: str) -> str:
+    """Pass LLM output through NemoClaw output rail before it reaches reports."""
+    if not _probe_nemoclaw():
+        return output
+    try:
+        import requests
+        r = requests.post(
+            f"{_NEMOCLAW_URL}/guard/output",
+            json={"prompt": output, "source": "audit_agent"},
+            timeout=5,
+        )
+        data = r.json()
+        if not data.get("safe", True):
+            console.print(f"[yellow][NemoClaw] Output sanitised: {data.get('blocked_reason')}[/yellow]")
+            return "[Report section redacted by NemoClaw security layer]"
+        return data.get("output", output)
+    except Exception:
+        return output  # fail open
 
 
 # ──────────────────────────────────────────────
@@ -659,6 +729,14 @@ def _build_report_html(client_name: str, findings: dict, css: str) -> str:
             </div>
         </div>"""
 
+    # Build agency footer block from env vars — empty if not configured
+    _footer_parts = []
+    if AGENCY_NAME:    _footer_parts.append(f"<p><strong>{AGENCY_NAME}</strong></p>")
+    if AGENCY_EMAIL:   _footer_parts.append(f'<p class="footer-contact">{AGENCY_EMAIL}</p>')
+    if AGENCY_WEBSITE: _footer_parts.append(f'<p><a href="https://{AGENCY_WEBSITE}" style="color:#E87811">{AGENCY_WEBSITE}</a></p>')
+    agency_footer = "\n            ".join(_footer_parts)
+    agency_name   = AGENCY_NAME or "ClawBoard"
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -675,7 +753,7 @@ def _build_report_html(client_name: str, findings: dict, css: str) -> str:
     <div class="report-container">
         <div class="report-header">
             <div class="header-top">
-                <div class="logo">Second Step Agency</div>
+                <div class="logo">{agency_name}</div>
                 <div class="header-meta">
                     <p><strong>{client_name}</strong></p>
                     <p>Audit Date: {audit_date}</p>
@@ -715,11 +793,8 @@ def _build_report_html(client_name: str, findings: dict, css: str) -> str:
         </div>
 
         <div class="report-footer">
-            <p><strong>Second Step Agency</strong></p>
-            <p>Performance Marketing Audits & Optimization</p>
-            <p class="footer-contact">growth@shivendrarawat.com</p>
-            <p><a href="https://getsecondstep.com" style="color:#E87811">getsecondstep.com</a></p>
-            <p style="margin-top:20px;font-size:11px;color:#666">Generated on {audit_date}</p>
+            {agency_footer}
+            <p style="margin-top:20px;font-size:11px;color:#666">Generated on {audit_date} · Powered by ClawBoard</p>
         </div>
     </div>
 </body>
@@ -901,7 +976,8 @@ async def main():
         )
 
     console.print()
-    console.print("[bold #E87811]━━━ Second Step Agency ━━━[/]")
+    _label = AGENCY_NAME or "ClawBoard"
+    console.print(f"[bold #E87811]━━━ {_label} ━━━[/]")
     console.print("[bold white]Performance Marketing Audit Agent[/]")
     console.print(f"[dim]{task}[/]")
     console.print()

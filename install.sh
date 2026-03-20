@@ -106,56 +106,94 @@ else
 fi
 success "Dependencies installed"
 
-# ── 4. Credentials setup ─────────────────────────────────────────────────────
+# ── 4. Credentials setup — BYOK wizard ───────────────────────────────────────
 CREDS="$INSTALL_DIR/config/credentials.env"
-if [ ! -f "$CREDS" ] || grep -q "your_google_ai_api_key_here" "$CREDS"; then
-    cp "$INSTALL_DIR/config/credentials.env.example" "$CREDS" 2>/dev/null || true
-    echo ""
-    warn "Credentials not configured yet."
-    echo ""
-    echo -e "  Edit your credentials file:"
-    echo -e "  ${CYAN}nano $CREDS${NC}"
-    echo ""
-    echo -e "  Required keys:"
-    echo -e "  • GOOGLE_AI_API_KEY        — aistudio.google.com"
-    echo -e "  • GOOGLE_ADS_DEVELOPER_TOKEN"
-    echo -e "  • GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET"
-    echo -e "  • GOOGLE_REFRESH_TOKEN     — run: python3 scripts/generate_google_token.py"
-    echo -e "  • TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID  (optional but recommended)"
-    echo ""
+[ ! -f "$CREDS" ] && cp "$INSTALL_DIR/config/credentials.env.example" "$CREDS" 2>/dev/null || true
+
+echo ""
+echo -e "${CYAN}━━━ Setup Wizard ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ClawBoard uses YOUR API keys — nothing is shared or pre-configured."
+echo -e "  Your keys never leave this server."
+echo ""
+
+# ── Gemini API key (required) ─────────────────────────────────────────────────
+EXISTING_GEMINI=$(grep "^GOOGLE_AI_API_KEY=" "$CREDS" 2>/dev/null | cut -d= -f2 | tr -d '"' | xargs)
+if [ -z "$EXISTING_GEMINI" ] || echo "$EXISTING_GEMINI" | grep -q "AIza\.\.\.\|your_"; then
+    echo -e "  ${YELLOW}Gemini API key required${NC} (free at aistudio.google.com)"
+    printf "  Enter your GOOGLE_AI_API_KEY: "
+    read -r GEMINI_KEY </dev/tty
+    if [ -n "$GEMINI_KEY" ]; then
+        sed -i "s|^GOOGLE_AI_API_KEY=.*|GOOGLE_AI_API_KEY=$GEMINI_KEY|" "$CREDS"
+        sed -i "s|^GOOGLE_API_KEY=.*|GOOGLE_API_KEY=$GEMINI_KEY|" "$CREDS"
+        success "Gemini API key saved"
+    else
+        warn "No key entered — NemoClaw will run in validation-only mode (no semantic rails)"
+    fi
+else
+    success "Gemini API key already configured"
 fi
+
+# ── Agency branding (optional) ────────────────────────────────────────────────
+EXISTING_AGENCY=$(grep "^AGENCY_NAME=" "$CREDS" 2>/dev/null | cut -d= -f2 | tr -d '"' | xargs)
+if [ -z "$EXISTING_AGENCY" ] || echo "$EXISTING_AGENCY" | grep -q "Your Agency"; then
+    echo ""
+    echo -e "  ${YELLOW}Agency branding${NC} (optional — appears on generated reports)"
+    printf "  Your agency name (press Enter to skip): "
+    read -r AGENCY_NAME_VAL </dev/tty
+    if [ -n "$AGENCY_NAME_VAL" ]; then
+        sed -i "s|^AGENCY_NAME=.*|AGENCY_NAME=$AGENCY_NAME_VAL|" "$CREDS"
+        printf "  Contact email (press Enter to skip): "
+        read -r AGENCY_EMAIL_VAL </dev/tty
+        [ -n "$AGENCY_EMAIL_VAL" ] && sed -i "s|^AGENCY_EMAIL=.*|AGENCY_EMAIL=$AGENCY_EMAIL_VAL|" "$CREDS"
+        printf "  Website (press Enter to skip): "
+        read -r AGENCY_WEB_VAL </dev/tty
+        [ -n "$AGENCY_WEB_VAL" ] && sed -i "s|^AGENCY_WEBSITE=.*|AGENCY_WEBSITE=$AGENCY_WEB_VAL|" "$CREDS"
+        success "Agency branding saved"
+    fi
+fi
+
+echo ""
+echo -e "  ${CYAN}You can edit all credentials anytime:${NC} nano $CREDS"
+echo -e "  ${CYAN}Google Ads OAuth:${NC} python3 $INSTALL_DIR/scripts/generate_google_token.py"
+echo ""
 
 # ── 5. Start NemoClaw security layer (port 8080, internal) ───────────────────
 SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 
+CURRENT_USER=$(whoami)
+SUDO=""
+[ "$CURRENT_USER" != "root" ] && SUDO="sudo"
+
 if command -v systemctl &>/dev/null; then
-    cat > /etc/systemd/system/nemoclaw.service <<EOF
+    $SUDO tee /etc/systemd/system/nemoclaw.service > /dev/null <<EOF
 [Unit]
 Description=NemoClaw — NVIDIA NeMo Guardrails Security Layer
 After=network.target
 
 [Service]
 Type=simple
-User=$(whoami)
+User=$CURRENT_USER
 WorkingDirectory=$INSTALL_DIR/nemoclaw
 ExecStart=$VENV_DIR/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8080
 Restart=always
 RestartSec=5
-Environment=PATH=$VENV_DIR/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-$INSTALL_DIR/config/credentials.env
+Environment=PATH=$VENV_DIR/bin:/usr/local/bin:/usr/bin:/bin
 Environment=LOG_LEVEL=info
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    systemctl daemon-reload
-    systemctl enable nemoclaw --quiet
-    systemctl restart nemoclaw
+    $SUDO systemctl daemon-reload
+    $SUDO systemctl enable nemoclaw --quiet
+    $SUDO systemctl restart nemoclaw
     # Give NemoClaw 3s to start before openclaw tries to use it
     sleep 3
     success "NemoClaw security layer started (internal port 8080)"
 else
-    pkill -f "uvicorn main:app" 2>/dev/null || true
-    nohup "$VENV_DIR/bin/python" -m uvicorn main:app --host 127.0.0.1 --port 8080 \
+    pkill -f "clawboard-nemoclaw" 2>/dev/null || true
+    env $(grep -v '^#' "$INSTALL_DIR/config/credentials.env" 2>/dev/null | xargs) \
+        nohup "$VENV_DIR/bin/python" -m uvicorn main:app --host 127.0.0.1 --port 8080 \
         > "$INSTALL_DIR/reports/nemoclaw.log" 2>&1 &
     sleep 3
     success "NemoClaw started (nohup, internal port 8080)"
@@ -163,27 +201,28 @@ fi
 
 # ── Start OpenClaw connect server (port 3000) ─────────────────────────────────
 if command -v systemctl &>/dev/null; then
-    cat > /etc/systemd/system/clawboard.service <<EOF
+    $SUDO tee /etc/systemd/system/clawboard.service > /dev/null <<EOF
 [Unit]
 Description=ClawBoard Connect Server (OpenClaw)
 After=network.target nemoclaw.service
 
 [Service]
 Type=simple
-User=$(whoami)
+User=$CURRENT_USER
 WorkingDirectory=$INSTALL_DIR
 ExecStart=$VENV_DIR/bin/python -m uvicorn server:app --host 0.0.0.0 --port 3000
 Restart=always
 RestartSec=5
-Environment=PATH=$VENV_DIR/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-$INSTALL_DIR/config/credentials.env
+Environment=PATH=$VENV_DIR/bin:/usr/local/bin:/usr/bin:/bin
 Environment=NEMOCLAW_URL=http://127.0.0.1:8080
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    systemctl daemon-reload
-    systemctl enable clawboard --quiet
-    systemctl restart clawboard
+    $SUDO systemctl daemon-reload
+    $SUDO systemctl enable clawboard --quiet
+    $SUDO systemctl restart clawboard
     success "OpenClaw gateway started on port 3000"
 else
     pkill -f "uvicorn server:app" 2>/dev/null || true
@@ -193,8 +232,8 @@ else
 fi
 
 # Open firewall port 3000 if ufw is active
-if command -v ufw &>/dev/null && ufw status | grep -q "active"; then
-    ufw allow 3000/tcp --quiet 2>/dev/null || true
+if command -v ufw &>/dev/null && $SUDO ufw status | grep -q "active"; then
+    $SUDO ufw allow 3000/tcp --quiet 2>/dev/null || true
     success "Firewall: port 3000 opened"
 fi
 
