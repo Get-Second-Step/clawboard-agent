@@ -19,20 +19,42 @@ echo ""
 echo -e "${CYAN}  Deploying clawboard.pro${NC}"
 echo ""
 
-# ── 1. Install nginx if missing ───────────────────────────────────────────────
+# ── 1. Install nginx + deps ───────────────────────────────────────────────────
 if ! command -v nginx &>/dev/null; then
     info "Installing nginx..."
     apt-get update -qq && apt-get install -y -qq nginx
 fi
+if ! command -v dig &>/dev/null; then
+    apt-get install -y -qq dnsutils 2>/dev/null || true
+fi
 success "nginx ready"
 
-# ── 2. Pull latest from GitHub ────────────────────────────────────────────────
+# ── 2. Remove old ClawBoard pages (green-themed) ─────────────────────────────
+info "Removing old landing pages..."
+
+# Wipe default nginx page
+rm -f /var/www/html/index.nginx-debian.html /var/www/html/index.html
+
+# Remove any previous clawboard web roots
+for OLD_ROOT in /var/www/html/clawboard /var/www/clawboard /var/www/clawboard-landing /root/clawboard-landing /root/clawboard-vps; do
+    [ -d "$OLD_ROOT" ] && rm -rf "$OLD_ROOT" && info "Removed $OLD_ROOT"
+done
+
+# Disable old nginx site configs (keep default disabled)
+for OLD_CONF in /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/clawboard /etc/nginx/sites-enabled/clawboard-landing; do
+    [ -L "$OLD_CONF" ] && rm -f "$OLD_CONF" && info "Disabled old config: $OLD_CONF"
+done
+
+success "Old pages cleared"
+
+# ── 3. Pull latest from GitHub ────────────────────────────────────────────────
 info "Pulling latest from GitHub..."
 git -C "$REPO_DIR" pull --quiet
 success "Repo up to date"
 
-# ── 3. Copy web files to web root ─────────────────────────────────────────────
+# ── 4. Copy web files to web root ─────────────────────────────────────────────
 info "Copying files to $WEB_ROOT..."
+rm -rf "$WEB_ROOT"
 mkdir -p "$WEB_ROOT/docs"
 cp "$REPO_DIR/index.html"   "$WEB_ROOT/index.html"
 cp "$REPO_DIR/upgrade.html" "$WEB_ROOT/upgrade.html"
@@ -40,7 +62,7 @@ cp "$REPO_DIR/docs/installation.html"  "$WEB_ROOT/docs/installation.html"
 cp "$REPO_DIR/docs/how-it-works.html"  "$WEB_ROOT/docs/how-it-works.html"
 success "Web files copied"
 
-# ── 4. Write nginx site config ────────────────────────────────────────────────
+# ── 5. Write nginx site config ────────────────────────────────────────────────
 info "Configuring nginx for $DOMAIN..."
 cat > /etc/nginx/sites-available/clawboard.pro <<EOF
 server {
@@ -86,7 +108,7 @@ ln -sf /etc/nginx/sites-available/clawboard.pro /etc/nginx/sites-enabled/clawboa
 nginx -t && systemctl reload nginx
 success "nginx configured and reloaded"
 
-# ── 5. SSL with Let's Encrypt ─────────────────────────────────────────────────
+# ── 6. SSL with Let's Encrypt ─────────────────────────────────────────────────
 if ! command -v certbot &>/dev/null; then
     info "Installing certbot..."
     apt-get install -y -qq certbot python3-certbot-nginx

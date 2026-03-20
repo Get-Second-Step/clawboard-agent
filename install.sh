@@ -98,10 +98,10 @@ fi
 # Install NemoClaw dependencies (guardrails security layer)
 info "Installing NemoClaw security layer..."
 if command -v uv &>/dev/null; then
-    uv pip install --python "$VENV_PYTHON" fastapi uvicorn "nemoguardrails>=0.8.0" pydantic -q 2>/dev/null || \
+    uv pip install --python "$VENV_PYTHON" fastapi uvicorn "nemoguardrails>=0.8.0" pydantic langchain-google-genai -q 2>/dev/null || \
         warn "NemoClaw optional deps skipped — will run in validation-only mode"
 else
-    "$VENV_PIP" install fastapi uvicorn "nemoguardrails>=0.8.0" pydantic -q 2>/dev/null || \
+    "$VENV_PIP" install fastapi uvicorn "nemoguardrails>=0.8.0" pydantic langchain-google-genai -q 2>/dev/null || \
         warn "NemoClaw optional deps skipped — will run in validation-only mode"
 fi
 success "Dependencies installed"
@@ -158,7 +158,8 @@ echo -e "  ${CYAN}Google Ads OAuth:${NC} python3 $INSTALL_DIR/scripts/generate_g
 echo ""
 
 # ── 5. Start NemoClaw security layer (port 8080, internal) ───────────────────
-SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+# Force IPv4 address for display
+SERVER_IP=$(curl -4 -s ifconfig.me 2>/dev/null || hostname -I | tr ' ' '\n' | grep -v ':' | head -1)
 
 CURRENT_USER=$(whoami)
 SUDO=""
