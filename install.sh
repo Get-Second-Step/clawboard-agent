@@ -77,10 +77,33 @@ success "Repo ready at $INSTALL_DIR"
 
 # ── 3. Install Python dependencies ───────────────────────────────────────────
 cd "$INSTALL_DIR"
+info "Setting up Python virtual environment..."
+VENV_DIR="$INSTALL_DIR/.venv"
+if command -v uv &>/dev/null; then
+    uv venv "$VENV_DIR" -q
+else
+    python3 -m venv "$VENV_DIR"
+fi
+VENV_PYTHON="$VENV_DIR/bin/python"
+VENV_PIP="$VENV_DIR/bin/pip"
+success "Virtualenv ready at $VENV_DIR"
+
 info "Installing Python dependencies..."
-uv pip install --system -r requirements.txt -q 2>/dev/null || \
-    uv pip install -e "." -q 2>/dev/null || \
-    pip3 install -r requirements.txt -q
+if command -v uv &>/dev/null; then
+    uv pip install --python "$VENV_PYTHON" -r requirements.txt -q
+else
+    "$VENV_PIP" install -r requirements.txt -q
+fi
+
+# Install NemoClaw dependencies (guardrails security layer)
+info "Installing NemoClaw security layer..."
+if command -v uv &>/dev/null; then
+    uv pip install --python "$VENV_PYTHON" fastapi uvicorn "nemoguardrails>=0.8.0" pydantic -q 2>/dev/null || \
+        warn "NemoClaw optional deps skipped — will run in validation-only mode"
+else
+    "$VENV_PIP" install fastapi uvicorn "nemoguardrails>=0.8.0" pydantic -q 2>/dev/null || \
+        warn "NemoClaw optional deps skipped — will run in validation-only mode"
+fi
 success "Dependencies installed"
 
 # ── 4. Credentials setup ─────────────────────────────────────────────────────
@@ -102,23 +125,58 @@ if [ ! -f "$CREDS" ] || grep -q "your_google_ai_api_key_here" "$CREDS"; then
     echo ""
 fi
 
-# ── 5. Start connect server (port 3000) as systemd service ───────────────────
+# ── 5. Start NemoClaw security layer (port 8080, internal) ───────────────────
 SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 
 if command -v systemctl &>/dev/null; then
-    cat > /etc/systemd/system/clawboard.service <<EOF
+    cat > /etc/systemd/system/nemoclaw.service <<EOF
 [Unit]
-Description=ClawBoard Connect Server
+Description=NemoClaw — NVIDIA NeMo Guardrails Security Layer
 After=network.target
 
 [Service]
 Type=simple
 User=$(whoami)
-WorkingDirectory=$INSTALL_DIR
-ExecStart=$(which python3) -m uvicorn server:app --host 0.0.0.0 --port 3000
+WorkingDirectory=$INSTALL_DIR/nemoclaw
+ExecStart=$VENV_DIR/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8080
 Restart=always
 RestartSec=5
-Environment=PATH=$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=$VENV_DIR/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+Environment=LOG_LEVEL=info
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable nemoclaw --quiet
+    systemctl restart nemoclaw
+    # Give NemoClaw 3s to start before openclaw tries to use it
+    sleep 3
+    success "NemoClaw security layer started (internal port 8080)"
+else
+    pkill -f "uvicorn main:app" 2>/dev/null || true
+    nohup "$VENV_DIR/bin/python" -m uvicorn main:app --host 127.0.0.1 --port 8080 \
+        > "$INSTALL_DIR/reports/nemoclaw.log" 2>&1 &
+    sleep 3
+    success "NemoClaw started (nohup, internal port 8080)"
+fi
+
+# ── Start OpenClaw connect server (port 3000) ─────────────────────────────────
+if command -v systemctl &>/dev/null; then
+    cat > /etc/systemd/system/clawboard.service <<EOF
+[Unit]
+Description=ClawBoard Connect Server (OpenClaw)
+After=network.target nemoclaw.service
+
+[Service]
+Type=simple
+User=$(whoami)
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$VENV_DIR/bin/python -m uvicorn server:app --host 0.0.0.0 --port 3000
+Restart=always
+RestartSec=5
+Environment=PATH=$VENV_DIR/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+Environment=NEMOCLAW_URL=http://127.0.0.1:8080
 
 [Install]
 WantedBy=multi-user.target
@@ -126,13 +184,12 @@ EOF
     systemctl daemon-reload
     systemctl enable clawboard --quiet
     systemctl restart clawboard
-    success "Connect server started on port 3000"
+    success "OpenClaw gateway started on port 3000"
 else
-    # Fallback: run in background with nohup
     pkill -f "uvicorn server:app" 2>/dev/null || true
-    nohup python3 -m uvicorn server:app --host 0.0.0.0 --port 3000 \
+    NEMOCLAW_URL=http://127.0.0.1:8080 nohup "$VENV_DIR/bin/python" -m uvicorn server:app --host 0.0.0.0 --port 3000 \
         > "$INSTALL_DIR/reports/server.log" 2>&1 &
-    success "Connect server started on port 3000 (nohup)"
+    success "OpenClaw started on port 3000 (nohup)"
 fi
 
 # Open firewall port 3000 if ufw is active
@@ -142,7 +199,7 @@ if command -v ufw &>/dev/null && ufw status | grep -q "active"; then
 fi
 
 # ── 6. Set up daily cron audit ────────────────────────────────────────────────
-CRON_CMD="cd $INSTALL_DIR && python3 audit_agent.py 'Run daily performance marketing audit' >> $INSTALL_DIR/reports/cron.log 2>&1"
+CRON_CMD="cd $INSTALL_DIR && $VENV_DIR/bin/python audit_agent.py 'Run daily performance marketing audit' >> $INSTALL_DIR/reports/cron.log 2>&1"
 if ! crontab -l 2>/dev/null | grep -q "clawboard\|audit_agent"; then
     (crontab -l 2>/dev/null; echo "0 9 * * * $CRON_CMD  # clawboard-daily") | crontab -
     success "Daily 9am audit cron installed"
@@ -157,7 +214,7 @@ SHELL_RC="$HOME/.bashrc"
 if ! grep -q "clawboard" "$SHELL_RC" 2>/dev/null; then
     echo "" >> "$SHELL_RC"
     echo "# ClawBoard" >> "$SHELL_RC"
-    echo "alias clawboard='cd $INSTALL_DIR && python3 audit_agent.py'" >> "$SHELL_RC"
+    echo "alias clawboard='cd $INSTALL_DIR && $VENV_DIR/bin/python audit_agent.py'" >> "$SHELL_RC"
     echo "alias clawboard-logs='tail -f $INSTALL_DIR/reports/cron.log'" >> "$SHELL_RC"
 fi
 
@@ -175,5 +232,11 @@ echo -e "  • Connect Google Ads, Meta Ads and GA4 with one click"
 echo -e "  • Add API keys in Settings (no terminal needed)"
 echo -e "  • Run audits and view PDF reports"
 echo ""
+echo -e "  ${YELLOW}Services running:${NC}"
+echo -e "  • ${GREEN}OpenClaw${NC}   — http://${SERVER_IP}:3000  (web UI + agent gateway)"
+echo -e "  • ${GREEN}NemoClaw${NC}   — 127.0.0.1:8080           (security layer, internal)"
+echo -e "  • ${GREEN}Deep Agents${NC} — on-demand via audit_agent.py"
+echo ""
+echo -e "  Verify NemoClaw: ${CYAN}curl http://127.0.0.1:8080/health${NC}"
 echo -e "  ${YELLOW}Logs:${NC} ${CYAN}tail -f $INSTALL_DIR/reports/cron.log${NC}"
 echo ""
