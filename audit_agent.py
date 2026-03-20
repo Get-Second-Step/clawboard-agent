@@ -883,7 +883,7 @@ def create_audit_agent():
     """Create the performance marketing audit agent."""
     # Use Gemini Flash if key available, fall back to Claude
     google_key = os.environ.get("GOOGLE_AI_API_KEY", "")
-    model = "google_genai:gemini-2.0-flash" if google_key else "anthropic:claude-sonnet-4-6"
+    model = "google_genai:gemini-2.5-flash" if google_key else "anthropic:claude-sonnet-4-6"
     return create_deep_agent(
         model=model,
         memory=["./AGENTS.md"],

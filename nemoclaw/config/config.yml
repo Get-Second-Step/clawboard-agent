@@ -1,7 +1,7 @@
 models:
   - type: main
-    engine: google_ai
-    model: gemini-2.0-flash
+    engine: google_genai
+    model: gemini-2.5-flash
     parameters:
       temperature: 0.0
 
