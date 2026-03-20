@@ -67,7 +67,7 @@ footer a:hover{color:var(--muted);}
 </head>
 <body>
 <nav>
-  <div class="nav-logo">Claw<span>Board</span> Pro</div>
+  <a href="/" class="nav-logo" style="text-decoration:none;color:inherit;">Claw<span>Board</span> Pro</a>
   <a href="/" class="back-link">← Back to overview</a>
 </nav>
 
@@ -119,7 +119,7 @@ footer a:hover{color:var(--muted);}
         <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Priority support</span></div>
         <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">License key + one-command install</span></div>
       </div>
-      <a href="https://clawboard.pro/checkout" class="cta-btn cta-pro">Get ClawBoard Pro — $89/mo →</a>
+      <button class="cta-btn cta-pro" onclick="openLeadForm()">Get ClawBoard Pro — $89/mo →</button>
     </div>
   </div>
 </div>
@@ -150,8 +150,81 @@ footer a:hover{color:var(--muted);}
 </div>
 
 <footer>
-  <span>ClawBoard Pro · <a href="/">Overview</a> · <a href="docs/installation.html">Docs</a></span>
+  <span>ClawBoard Pro · <a href="/">Overview</a> · <a href="/docs/installation">Docs</a></span>
   <span>Built by <a href="https://getsecondstep.com">Second Step Agency</a></span>
 </footer>
+<!-- Lead Form Modal -->
+<div id="lead-overlay" style="display:none;position:fixed;inset:0;background:rgba(6,7,12,0.85);backdrop-filter:blur(6px);z-index:100;align-items:center;justify-content:center;">
+  <div style="background:#0d0f18;border:1px solid rgba(255,255,255,0.1);max-width:460px;width:90%;padding:36px;position:relative;">
+    <button onclick="closeLeadForm()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#8b8fa8;font-size:20px;cursor:pointer;">✕</button>
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;letter-spacing:-0.03em;margin-bottom:6px;">Get ClawBoard Pro</div>
+    <div style="font-size:13px;color:#8b8fa8;margin-bottom:24px;">$89/mo · We'll reach out within 24 hours to set you up.</div>
+    <div id="lead-success" style="display:none;text-align:center;padding:24px 0;">
+      <div style="font-size:32px;margin-bottom:12px;">✓</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:#22c55e;">Request received!</div>
+      <div style="font-size:13px;color:#8b8fa8;margin-top:6px;">We'll message you within 24 hours.</div>
+    </div>
+    <form id="lead-form" onsubmit="submitLead(event)">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8b8fa8;margin-bottom:5px;">Your Name</div>
+        <input id="lf-name" type="text" required placeholder="Jane Smith" style="width:100%;background:#111420;border:1px solid rgba(255,255,255,0.08);color:#f0f0f4;padding:10px 13px;font-family:inherit;font-size:13px;outline:none;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8b8fa8;margin-bottom:5px;">Email</div>
+        <input id="lf-email" type="email" required placeholder="jane@agency.com" style="width:100%;background:#111420;border:1px solid rgba(255,255,255,0.08);color:#f0f0f4;padding:10px 13px;font-family:inherit;font-size:13px;outline:none;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8b8fa8;margin-bottom:5px;">Agency / Company</div>
+        <input id="lf-agency" type="text" placeholder="Your Agency Name" style="width:100%;background:#111420;border:1px solid rgba(255,255,255,0.08);color:#f0f0f4;padding:10px 13px;font-family:inherit;font-size:13px;outline:none;">
+      </div>
+      <div style="margin-bottom:22px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8b8fa8;margin-bottom:5px;">Monthly Ad Spend (approx)</div>
+        <select id="lf-spend" style="width:100%;background:#111420;border:1px solid rgba(255,255,255,0.08);color:#f0f0f4;padding:10px 13px;font-family:inherit;font-size:13px;outline:none;">
+          <option value="">Select range</option>
+          <option>Under $5K/mo</option>
+          <option>$5K–$20K/mo</option>
+          <option>$20K–$100K/mo</option>
+          <option>$100K+/mo</option>
+        </select>
+      </div>
+      <button type="submit" id="lf-submit" style="width:100%;padding:13px;background:#E87811;color:#07080a;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:800;border:none;cursor:pointer;">Request Access — $89/mo →</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function openLeadForm(){
+  const o=document.getElementById('lead-overlay');
+  o.style.display='flex';
+}
+function closeLeadForm(){
+  document.getElementById('lead-overlay').style.display='none';
+  document.getElementById('lead-success').style.display='none';
+  document.getElementById('lead-form').style.display='block';
+}
+async function submitLead(e){
+  e.preventDefault();
+  const btn=document.getElementById('lf-submit');
+  btn.textContent='Sending...';btn.disabled=true;
+  const name=document.getElementById('lf-name').value;
+  const email=document.getElementById('lf-email').value;
+  const agency=document.getElementById('lf-agency').value;
+  const spend=document.getElementById('lf-spend').value;
+  const msg=`🚀 *New ClawBoard Pro Lead*\n\n👤 ${name}\n📧 ${email}\n🏢 ${agency||'—'}\n💰 ${spend||'—'}\n\n_From clawboard.pro/upgrade_`;
+  try{
+    await fetch('/api/lead',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,email,agency,spend,message:msg})
+    });
+    document.getElementById('lead-form').style.display='none';
+    document.getElementById('lead-success').style.display='block';
+  }catch(err){
+    btn.textContent='Request Access — $89/mo →';
+    btn.disabled=false;
+    alert('Something went wrong. Email us at growth@shivendrarawat.com');
+  }
+}
+</script>
 </body>
 </html>

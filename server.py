@@ -1258,6 +1258,26 @@ async def api_save_credentials(request: Request):
     return JSONResponse({"ok": True, "saved": list(data.keys())})
 
 
+@app.post("/api/lead")
+async def api_lead(request: Request):
+    data = await request.json()
+    bot_token = os.environ.get("LEAD_BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id   = os.environ.get("LEAD_CHAT_ID")   or os.environ.get("TELEGRAM_CHAT_ID", "")
+    if bot_token and chat_id:
+        try:
+            import urllib.request as ureq, urllib.parse as uparse
+            msg = data.get("message", f"New lead: {data.get('email','?')}")
+            payload = json.dumps({"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}).encode()
+            req = ureq.Request(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                data=payload, headers={"Content-Type": "application/json"}
+            )
+            ureq.urlopen(req, timeout=5)
+        except Exception as ex:
+            print(f"[lead] Telegram send failed: {ex}")
+    return JSONResponse({"ok": True})
+
+
 @app.get("/api/nemoclaw-health")
 async def api_nemoclaw_health():
     import urllib.request as ureq
