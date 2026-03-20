@@ -24,7 +24,6 @@ import uvicorn
 from dotenv import dotenv_values, load_dotenv, set_key
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 
 # ── Config ────────────────────────────────────────────────────────────────────
 PROJECT_DIR = Path(__file__).parent
@@ -38,10 +37,7 @@ load_dotenv(CREDS_FILE)
 
 app = FastAPI(title="ClawBoard Pro", docs_url=None, redoc_url=None)
 
-# ── New UI (served from /ui/) ─────────────────────────────────────────────────
 UI_DIR = PROJECT_DIR / "ui"
-if UI_DIR.exists():
-    app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -407,8 +403,11 @@ QUICK_COMMANDS = [
 
 
 @app.get("/", response_class=HTMLResponse)
-async def root_redirect():
-    return RedirectResponse(url="/ui/app.html", status_code=302)
+async def root_page():
+    ui_file = UI_DIR / "app.html"
+    if ui_file.exists():
+        return HTMLResponse(ui_file.read_text())
+    return RedirectResponse(url="/legacy", status_code=302)
 
 @app.get("/legacy", response_class=HTMLResponse)
 async def chat_page(request: Request):
