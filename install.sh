@@ -102,23 +102,63 @@ if [ ! -f "$CREDS" ] || grep -q "your_google_ai_api_key_here" "$CREDS"; then
     echo ""
 fi
 
-# ── 5. Set up daily cron heartbeat ────────────────────────────────────────────
-CRON_CMD="cd $INSTALL_DIR && uv run python audit_agent.py 'Run daily heartbeat audit' >> $INSTALL_DIR/reports/cron.log 2>&1"
+# ── 5. Start connect server (port 3000) as systemd service ───────────────────
+SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+
+if command -v systemctl &>/dev/null; then
+    cat > /etc/systemd/system/clawboard.service <<EOF
+[Unit]
+Description=ClawBoard Connect Server
+After=network.target
+
+[Service]
+Type=simple
+User=$(whoami)
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$(which python3) -m uvicorn server:app --host 0.0.0.0 --port 3000
+Restart=always
+RestartSec=5
+Environment=PATH=$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable clawboard --quiet
+    systemctl restart clawboard
+    success "Connect server started on port 3000"
+else
+    # Fallback: run in background with nohup
+    pkill -f "uvicorn server:app" 2>/dev/null || true
+    nohup python3 -m uvicorn server:app --host 0.0.0.0 --port 3000 \
+        > "$INSTALL_DIR/reports/server.log" 2>&1 &
+    success "Connect server started on port 3000 (nohup)"
+fi
+
+# Open firewall port 3000 if ufw is active
+if command -v ufw &>/dev/null && ufw status | grep -q "active"; then
+    ufw allow 3000/tcp --quiet 2>/dev/null || true
+    success "Firewall: port 3000 opened"
+fi
+
+# ── 6. Set up daily cron audit ────────────────────────────────────────────────
+CRON_CMD="cd $INSTALL_DIR && python3 audit_agent.py 'Run daily performance marketing audit' >> $INSTALL_DIR/reports/cron.log 2>&1"
 if ! crontab -l 2>/dev/null | grep -q "clawboard\|audit_agent"; then
     (crontab -l 2>/dev/null; echo "0 9 * * * $CRON_CMD  # clawboard-daily") | crontab -
-    success "Daily 9am cron job installed"
+    success "Daily 9am audit cron installed"
 else
     warn "Cron job already exists — skipping"
 fi
 
-# ── 6. Create run alias ───────────────────────────────────────────────────────
+# ── 7. Create run alias ───────────────────────────────────────────────────────
 SHELL_RC="$HOME/.bashrc"
 [ -f "$HOME/.zshrc" ] && SHELL_RC="$HOME/.zshrc"
 
 if ! grep -q "clawboard" "$SHELL_RC" 2>/dev/null; then
     echo "" >> "$SHELL_RC"
-    echo "# ClawBoard Audit Agent" >> "$SHELL_RC"
-    echo "alias clawboard='cd $INSTALL_DIR && uv run python audit_agent.py'" >> "$SHELL_RC"
+    echo "# ClawBoard" >> "$SHELL_RC"
+    echo "alias clawboard='cd $INSTALL_DIR && python3 audit_agent.py'" >> "$SHELL_RC"
+    echo "alias clawboard-logs='tail -f $INSTALL_DIR/reports/cron.log'" >> "$SHELL_RC"
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
@@ -127,12 +167,13 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}  ClawBoard installed successfully!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "  ${YELLOW}Next steps:${NC}"
-echo -e "  1. Add credentials:   ${CYAN}nano $CREDS${NC}"
-echo -e "  2. Generate token:    ${CYAN}cd $INSTALL_DIR && python3 scripts/generate_google_token.py${NC}"
-echo -e "  3. Run your first audit:"
-echo -e "     ${CYAN}cd $INSTALL_DIR && uv run python audit_agent.py \"Audit my Google Ads account\"${NC}"
+echo -e "  ${YELLOW}Open this in your browser:${NC}"
+echo -e "  ${GREEN}  ➜  http://${SERVER_IP}:3000${NC}"
 echo ""
-echo -e "  Reports saved to: ${CYAN}$INSTALL_DIR/reports/${NC}"
-echo -e "  Logs:             ${CYAN}$INSTALL_DIR/reports/cron.log${NC}"
+echo -e "  From there you can:"
+echo -e "  • Connect Google Ads, Meta Ads and GA4 with one click"
+echo -e "  • Add API keys in Settings (no terminal needed)"
+echo -e "  • Run audits and view PDF reports"
+echo ""
+echo -e "  ${YELLOW}Logs:${NC} ${CYAN}tail -f $INSTALL_DIR/reports/cron.log${NC}"
 echo ""
