@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upgrade to ClawBoard Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06070c;--surface:#0d0f18;--border:rgba(255,255,255,0.07);
+  --text:#f0f0f4;--muted:#8b8fa8;--dim:#4a4e62;
+  --orange:#E87811;--banana:#FFE135;--green:#22c55e;--purple:#7c5cfc;--cyan:#38d9f5;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.6;}
+a{color:var(--orange);text-decoration:none;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:56px;border-bottom:1px solid var(--border);background:rgba(6,7,12,0.9);backdrop-filter:blur(20px);}
+.nav-logo{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:800;letter-spacing:-0.04em;color:var(--text);}
+.nav-logo span{color:var(--orange);}
+.back-link{font-size:13px;color:var(--muted);}
+.back-link:hover{color:var(--text);}
+
+/* Hero */
+.hero{text-align:center;padding:80px 24px 64px;border-bottom:1px solid var(--border);background:radial-gradient(ellipse 60% 50% at 50% 0%, rgba(232,120,17,0.08) 0%, transparent 70%);}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 6px;background:rgba(255,255,255,0.04);border:1px solid var(--border);font-size:13px;margin-bottom:24px;}
+.hero-badge{padding:2px 8px;background:var(--orange);color:#07080a;font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;font-family:'Space Grotesk',sans-serif;}
+h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:-0.04em;line-height:1.05;margin-bottom:16px;}
+.grad{background:linear-gradient(135deg,var(--banana) 0%,var(--orange) 50%,#ff4b8a 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:17px;color:var(--muted);max-width:480px;margin:0 auto 16px;}
+
+/* Compare */
+.compare-wrap{max-width:900px;margin:0 auto;padding:80px 24px;}
+.compare-title{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;letter-spacing:-0.04em;margin-bottom:32px;text-align:center;}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);}
+.col-oss{background:var(--surface);padding:28px;}
+.col-pro{background:#0a0c15;padding:28px;border:1px solid rgba(232,120,17,0.2);position:relative;}
+.col-pro::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--banana),var(--orange));}
+.col-label{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:18px;margin-bottom:4px;}
+.col-label.pro{color:var(--orange);}
+.col-price{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;letter-spacing:-0.05em;margin-bottom:6px;}
+.col-price.pro{background:linear-gradient(135deg,var(--banana),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.col-tagline{font-size:13px;color:var(--muted);margin-bottom:24px;}
+.feat-list{display:flex;flex-direction:column;gap:10px;}
+.feat-row{display:flex;align-items:flex-start;gap:10px;font-size:13px;}
+.feat-row .ck{flex-shrink:0;font-size:12px;}
+.feat-row .ck.yes{color:var(--green);}
+.feat-row .ck.no{color:var(--dim);}
+.feat-row .txt{color:var(--muted);}
+.feat-row .txt.active{color:var(--text);}
+.cta-btn{display:block;width:100%;padding:14px;margin-top:28px;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:800;cursor:pointer;border:none;transition:all 0.15s;text-align:center;}
+.cta-oss{background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border);}
+.cta-pro{background:var(--orange);color:#07080a;}
+.cta-pro:hover{background:#f08828;box-shadow:0 0 32px rgba(232,120,17,0.4);}
+
+/* FAQ */
+.faq-wrap{max-width:680px;margin:0 auto;padding:0 24px 80px;}
+.faq-title{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;letter-spacing:-0.04em;margin-bottom:24px;text-align:center;}
+.faq-item{border-bottom:1px solid var(--border);padding:20px 0;}
+.faq-q{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;margin-bottom:8px;}
+.faq-a{font-size:14px;color:var(--muted);line-height:1.6;}
+
+footer{border-top:1px solid var(--border);padding:24px 40px;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim);}
+footer a{color:var(--dim);}
+footer a:hover{color:var(--muted);}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo">Claw<span>Board</span> Pro</div>
+  <a href="landing.html" class="back-link">← Back to overview</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">
+    <span class="hero-badge">Upgrade</span>
+    <span style="color:var(--muted);">ClawBoard Pro · Agency Edition</span>
+  </div>
+  <h1>One account is a start.<br><span class="grad">Pro runs them all.</span></h1>
+  <p class="hero-sub">Unlimited client accounts. All agents. Managed OAuth — no developer tokens for clients. Starting at $89/mo.</p>
+</div>
+
+<div class="compare-wrap">
+  <div class="compare-title">Open Source vs ClawBoard Pro</div>
+  <div class="compare-grid">
+    <div class="col-oss">
+      <div class="col-label">Open Source</div>
+      <div class="col-price">$0</div>
+      <div class="col-tagline">Free forever. MIT license. Self-managed.</div>
+      <div class="feat-list">
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Audit Agent (122 checks)</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Telegram, Slack, WhatsApp</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Chat interface (port 3000)</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">MCC support (1 MCC)</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">NemoClaw security layer</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Scheduling customisation</span></div>
+        <div class="feat-row"><span class="ck no">—</span><span class="txt">1 client account at a time</span></div>
+        <div class="feat-row"><span class="ck no">—</span><span class="txt">Must manage OAuth yourself</span></div>
+        <div class="feat-row"><span class="ck no">—</span><span class="txt">Listen Agent (real-time alerts)</span></div>
+        <div class="feat-row"><span class="ck no">—</span><span class="txt">Paid Media Agent (auto-execute)</span></div>
+        <div class="feat-row"><span class="ck no">—</span><span class="txt">CEO Agent</span></div>
+        <div class="feat-row"><span class="ck no">—</span><span class="txt">Multi-client dashboard</span></div>
+      </div>
+      <a href="https://github.com/Get-Second-Step/clawboard-agent" target="_blank" class="cta-btn cta-oss">★ Get Open Source Free</a>
+    </div>
+
+    <div class="col-pro">
+      <div class="col-label pro">ClawBoard Pro</div>
+      <div class="col-price pro">$89<span style="font-size:18px;font-weight:600;opacity:0.7;">/mo</span></div>
+      <div class="col-tagline" style="color:var(--muted);">Everything in Open Source, plus:</div>
+      <div class="feat-list">
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Everything in Open Source</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Unlimited client accounts</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Managed OAuth (no dev tokens)</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Listen Agent — real-time alerts 24/7</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Paid Media Agent — auto-execute</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">CEO Agent — weekly executive brief</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Multi-client dashboard</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">Priority support</span></div>
+        <div class="feat-row"><span class="ck yes">✓</span><span class="txt active">License key + one-command install</span></div>
+      </div>
+      <a href="https://clawboard.pro/checkout" class="cta-btn cta-pro">Get ClawBoard Pro — $89/mo →</a>
+    </div>
+  </div>
+</div>
+
+<div class="faq-wrap">
+  <div class="faq-title">Common questions</div>
+
+  <div class="faq-item">
+    <div class="faq-q">Does Pro still run on my own VPS?</div>
+    <div class="faq-a">Yes. ClawBoard Pro installs on your Hostinger, DigitalOcean, or any Ubuntu VPS exactly like the open source version. The difference is the license key unlocks multiple clients and all agents. Your data never leaves your server.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">What is "managed OAuth" — why does it matter?</div>
+    <div class="faq-a">In the open source version you need a Google Ads Developer Token to connect accounts — that requires an approved Google API application. With Pro, ClawBoard's OAuth app handles the authorisation. Your clients click one link, approve access, and they're connected. No developer tokens, no API approvals.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">What happens if I cancel?</div>
+    <div class="faq-a">Your license key deactivates and Pro features gate. The open source engine keeps running — Audit Agent, Telegram delivery, and the 1-account limit return. Your reports and credentials stay on your VPS.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">How many clients can I manage on Pro?</div>
+    <div class="faq-a">Unlimited. Switch between accounts instantly from the dashboard. All accounts stay connected simultaneously — no disconnecting one to add another.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Is my client data safe?</div>
+    <div class="faq-a">Yes. ClawBoard runs on your VPS. No client data passes through any ClawBoard infrastructure — only your license key validation hits our API (a single POST with your key, nothing else). All audit data, reports, and credentials remain on your server behind NemoClaw's guardrails.</div>
+  </div>
+</div>
+
+<footer>
+  <span>ClawBoard Pro · <a href="landing.html">Overview</a> · <a href="docs/installation.html">Docs</a></span>
+  <span>Built by <a href="https://getsecondstep.com">Second Step Agency</a></span>
+</footer>
+</body>
+</html>

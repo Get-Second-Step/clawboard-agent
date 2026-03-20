@@ -1,0 +1,103 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  ClawBoard Pro — Three-service stack
+#
+#  openclaw    → Web UI + WebSocket gateway  (port 3000, user-facing)
+#  nemoclaw    → NVIDIA NeMo Guardrails layer (port 8080, internal only)
+#  deep-agents → LangGraph parallel audit engine (internal only)
+#
+#  Usage:
+#    docker compose up -d          # start all
+#    docker compose logs -f        # follow logs
+#    docker compose down           # stop all
+# ──────────────────────────────────────────────────────────────────────────────
+
+networks:
+  clawnet:
+    driver: bridge
+
+volumes:
+  reports:
+  config:
+
+services:
+
+  # ── NemoClaw — Security guardrails (starts first) ──────────────────────────
+  nemoclaw:
+    build:
+      context: .
+      dockerfile: Dockerfile.nemoclaw
+    container_name: nemoclaw
+    restart: unless-stopped
+    networks: [clawnet]
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Deep Agents — Audit engine ─────────────────────────────────────────────
+  deep-agents:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deep-agents
+    restart: unless-stopped
+    networks: [clawnet]
+    volumes:
+      - reports:/app/reports
+      - config:/app/config
+    environment:
+      - NEMOCLAW_URL=http://nemoclaw:8080
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - config/credentials.env
+    depends_on:
+      nemoclaw:
+        condition: service_healthy
+    command: ["python3", "-c", "import time; print('Deep Agents ready'); time.sleep(infinity)"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import audit_agent; print('ok')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── OpenClaw — Web UI + gateway (user-facing on port 3000) ────────────────
+  openclaw:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openclaw
+    restart: unless-stopped
+    networks: [clawnet]
+    ports:
+      - "3000:3000"
+    volumes:
+      - reports:/app/reports
+      - config:/app/config
+    environment:
+      - PORT=3000
+      - NEMOCLAW_URL=http://nemoclaw:8080
+      - DEEP_AGENTS_ENABLED=true
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - config/credentials.env
+    depends_on:
+      nemoclaw:
+        condition: service_healthy
+      deep-agents:
+        condition: service_started
+    command: ["python3", "server.py"]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
