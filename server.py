@@ -330,6 +330,54 @@ def sidebar_html() -> str:
     </div>"""
 
 
+UPDATE_BANNER_JS = """
+<script>
+(function() {
+  const banner = document.getElementById('update-banner');
+  const btn    = document.getElementById('update-btn');
+  const label  = document.getElementById('update-label');
+  if (!banner) return;
+  fetch('/api/update-check')
+    .then(r => r.json())
+    .then(d => {
+      if (!d.up_to_date) {
+        label.textContent = 'Update available (' + d.remote + '): ' + d.message;
+        banner.style.display = 'flex';
+      }
+    }).catch(() => {});
+  if (btn) {
+    btn.addEventListener('click', () => {
+      btn.textContent = 'Updating…';
+      btn.disabled = true;
+      fetch('/api/update', {method:'POST'})
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok) {
+            label.textContent = d.message + ' Reloading in 3s…';
+            setTimeout(() => location.reload(), 3000);
+          } else {
+            label.textContent = 'Update failed: ' + d.error;
+            btn.disabled = false;
+            btn.textContent = 'Retry';
+          }
+        });
+    });
+  }
+})();
+</script>
+"""
+
+UPDATE_BANNER_HTML = """
+<div id="update-banner" style="display:none;align-items:center;justify-content:space-between;
+  background:#1a2a1a;border-bottom:1px solid #2d4a2d;padding:8px 20px;font-size:13px;color:#7ec87e;">
+  <span>⬆ <span id="update-label"></span></span>
+  <button id="update-btn" onclick="" style="background:#2d6a2d;color:#fff;border:none;
+    border-radius:6px;padding:4px 14px;font-size:12px;cursor:pointer;font-weight:600;">
+    Update Now
+  </button>
+</div>
+"""
+
 def shell(active: str, body: str, title: str = "ClawBoard Pro", sidebar: bool = True) -> HTMLResponse:
     sb = sidebar_html() if sidebar else ""
     html = f"""<!DOCTYPE html>
@@ -342,6 +390,7 @@ def shell(active: str, body: str, title: str = "ClawBoard Pro", sidebar: bool = 
 <style>{CSS}</style>
 </head>
 <body>
+{UPDATE_BANNER_HTML}
 {topbar(active)}
 <div class="app-body">
   {sb}
@@ -349,6 +398,7 @@ def shell(active: str, body: str, title: str = "ClawBoard Pro", sidebar: bool = 
     {body}
   </div>
 </div>
+{UPDATE_BANNER_JS}
 </body>
 </html>"""
     return HTMLResponse(html)
@@ -1309,6 +1359,54 @@ async def api_nemoclaw_health():
             return JSONResponse(json.loads(r.read()))
     except Exception:
         return JSONResponse({"status": "unreachable", "rails_loaded": False})
+
+
+@app.get("/api/update-check")
+async def api_update_check():
+    try:
+        local = subprocess.check_output(
+            ["git", "-C", str(PROJECT_DIR), "rev-parse", "HEAD"],
+            text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        req = urllib.request.Request(
+            "https://api.github.com/repos/Get-Second-Step/clawboard-agent/commits/main",
+            headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "ClawBoard"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read())
+        remote = str(data["sha"])
+        up_to_date = local == remote
+        local_short = local[:7]
+        remote_short = remote[:7]
+        msg = str(data["commit"]["message"]).splitlines()[0]
+        return JSONResponse({
+            "up_to_date": up_to_date,
+            "local": local_short,
+            "remote": remote_short,
+            "message": msg,
+        })
+    except Exception as e:
+        return JSONResponse({"up_to_date": True, "error": str(e)})
+
+
+@app.post("/api/update")
+async def api_update():
+    try:
+        subprocess.check_call(
+            ["git", "-C", str(PROJECT_DIR), "fetch", "--quiet"],
+            stderr=subprocess.DEVNULL
+        )
+        subprocess.check_call(
+            ["git", "-C", str(PROJECT_DIR), "reset", "--hard", "origin/main", "--quiet"],
+            stderr=subprocess.DEVNULL
+        )
+        # Restart service (works whether running under systemd or directly)
+        subprocess.Popen(
+            ["bash", "-c", "sleep 1 && (systemctl restart clawboard 2>/dev/null || kill -HUP 1 2>/dev/null || true)"]
+        )
+        return JSONResponse({"ok": True, "message": "Updated — restarting in 1 second…"})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
