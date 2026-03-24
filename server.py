@@ -842,9 +842,7 @@ async def google_manual_connect(request: Request):
         "prompt": "consent",
     })
     oauth_url = f"https://accounts.google.com/o/oauth2/auth?{params}"
-    print(f"[DEBUG] client_id received: {repr(client_id)}", flush=True)
-    print(f"[DEBUG] OAuth URL: {oauth_url}", flush=True)
-    return RedirectResponse(oauth_url)
+    return RedirectResponse(oauth_url, status_code=303)
 
 
 @app.get("/callback/google")
