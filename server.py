@@ -830,40 +830,18 @@ async def google_manual_connect(request: Request):
     c = creds()
     client_id = c.get("GOOGLE_CLIENT_ID", "")
 
-    # Use OOB flow — works for Desktop app type on any VPS (no redirect URI needed)
+    redirect_uri = "https://clawboard.pro/callback/google"
+    save_cred("_OAUTH_REDIRECT_URI", redirect_uri)
+
     params = urllib.parse.urlencode({
         "client_id": client_id,
-        "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
+        "redirect_uri": redirect_uri,
         "scope": "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/analytics.readonly",
         "response_type": "code",
         "access_type": "offline",
         "prompt": "consent",
     })
-    auth_url = f"https://accounts.google.com/o/oauth2/auth?{params}"
-
-    body = f"""
-    <div class="container" style="max-width:600px;">
-      <div class="page-title">Authorise Google Ads</div>
-      <div class="page-subtitle">One last step — approve access in Google</div>
-      <div class="panel">
-        <div style="font-weight:600;font-size:14px;margin-bottom:16px;">Step 1 — Click the link below and approve access</div>
-        <a href="{auth_url}" target="_blank" class="btn btn-primary" style="display:inline-block;margin-bottom:20px;">
-          Open Google Authorisation →
-        </a>
-        <div style="font-size:13px;color:#8b8fa8;margin-bottom:20px;">
-          After approving, Google will show you a <strong style="color:#f0f0f2;">code on screen</strong>. Copy it.
-        </div>
-        <div style="font-weight:600;font-size:14px;margin-bottom:10px;">Step 2 — Paste the code here</div>
-        <form method="POST" action="/connect/google_ads/exchange-code">
-          <div class="form-group">
-            <input class="form-input" name="auth_code" placeholder="Paste code from Google here…" required
-              style="font-size:15px;letter-spacing:1px;">
-          </div>
-          <button type="submit" class="btn btn-primary">Connect Google Ads ✓</button>
-        </form>
-      </div>
-    </div>"""
-    return HTMLResponse(shell("chat", body, "Authorise Google").body)
+    return RedirectResponse(f"https://accounts.google.com/o/oauth2/auth?{params}")
 
 
 @app.get("/callback/google")
