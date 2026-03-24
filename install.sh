@@ -68,7 +68,8 @@ fi
 # ── 2. Clone repo ─────────────────────────────────────────────────────────────
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Updating existing installation..."
-    git -C "$INSTALL_DIR" pull --quiet
+    git -C "$INSTALL_DIR" fetch --quiet
+    git -C "$INSTALL_DIR" reset --hard origin/main --quiet
 else
     info "Cloning ClawBoard agent..."
     git clone --quiet "$REPO" "$INSTALL_DIR"
