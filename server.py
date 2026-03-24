@@ -824,32 +824,68 @@ async def google_manual_connect(request: Request):
     form = await request.form()
     save_cred("GOOGLE_ADS_DEVELOPER_TOKEN", form.get("developer_token", ""))
     save_cred("GOOGLE_ADS_CUSTOMER_ID", form.get("customer_id", "").replace("-", ""))
-    save_cred("GOOGLE_CLIENT_ID", form.get("client_id", ""))
-    save_cred("GOOGLE_CLIENT_SECRET", form.get("client_secret", ""))
+    save_cred("GOOGLE_CLIENT_ID", form.get("client_id", "").strip())
+    save_cred("GOOGLE_CLIENT_SECRET", form.get("client_secret", "").strip())
 
     c = creds()
-    base = get_server_base(request)
-    redirect_uri = f"{base}/callback/google"
-    save_cred("_OAUTH_REDIRECT_URI", redirect_uri)
+    client_id = c.get("GOOGLE_CLIENT_ID", "")
 
+    # Use OOB flow — works for Desktop app type on any VPS (no redirect URI needed)
     params = urllib.parse.urlencode({
-        "client_id": c.get("GOOGLE_CLIENT_ID", ""),
-        "redirect_uri": redirect_uri,
+        "client_id": client_id,
+        "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
         "scope": "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/analytics.readonly",
         "response_type": "code",
         "access_type": "offline",
         "prompt": "consent",
     })
-    return RedirectResponse(f"https://accounts.google.com/o/oauth2/auth?{params}")
+    auth_url = f"https://accounts.google.com/o/oauth2/auth?{params}"
+
+    body = f"""
+    <div class="container" style="max-width:600px;">
+      <div class="page-title">Authorise Google Ads</div>
+      <div class="page-subtitle">One last step — approve access in Google</div>
+      <div class="panel">
+        <div style="font-weight:600;font-size:14px;margin-bottom:16px;">Step 1 — Click the link below and approve access</div>
+        <a href="{auth_url}" target="_blank" class="btn btn-primary" style="display:inline-block;margin-bottom:20px;">
+          Open Google Authorisation →
+        </a>
+        <div style="font-size:13px;color:#8b8fa8;margin-bottom:20px;">
+          After approving, Google will show you a <strong style="color:#f0f0f2;">code on screen</strong>. Copy it.
+        </div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:10px;">Step 2 — Paste the code here</div>
+        <form method="POST" action="/connect/google_ads/exchange-code">
+          <div class="form-group">
+            <input class="form-input" name="auth_code" placeholder="Paste code from Google here…" required
+              style="font-size:15px;letter-spacing:1px;">
+          </div>
+          <button type="submit" class="btn btn-primary">Connect Google Ads ✓</button>
+        </form>
+      </div>
+    </div>"""
+    return HTMLResponse(shell("chat", body, "Authorise Google").body)
 
 
 @app.get("/callback/google")
 async def google_callback(code: str = "", error: str = ""):
     if error or not code:
         return RedirectResponse(f"/connect?error=Google+auth+failed:+{error}")
-
     c = creds()
-    redirect_uri = c.get("_OAUTH_REDIRECT_URI", "")
+    redirect_uri = c.get("_OAUTH_REDIRECT_URI", "urn:ietf:wg:oauth:2.0:oob")
+    return await _exchange_google_code(code, redirect_uri)
+
+
+@app.post("/connect/google_ads/exchange-code")
+async def google_exchange_code(request: Request):
+    form = await request.form()
+    code = str(form.get("auth_code", "")).strip()
+    if not code:
+        return RedirectResponse("/connect?error=No+code+entered")
+    return await _exchange_google_code(code, "urn:ietf:wg:oauth:2.0:oob")
+
+
+async def _exchange_google_code(code: str, redirect_uri: str):
+    c = creds()
     data = urllib.parse.urlencode({
         "code": code,
         "client_id": c.get("GOOGLE_CLIENT_ID", ""),
@@ -857,7 +893,6 @@ async def google_callback(code: str = "", error: str = ""):
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }).encode()
-
     try:
         req = urllib.request.Request(
             "https://oauth2.googleapis.com/token", data=data,
@@ -866,14 +901,14 @@ async def google_callback(code: str = "", error: str = ""):
         with urllib.request.urlopen(req, timeout=15) as resp:
             tokens = json.loads(resp.read())
     except Exception as e:
-        return RedirectResponse(f"/connect?error=Token+exchange+failed:+{str(e)[:60]}")
+        return RedirectResponse(f"/connect?error=Token+exchange+failed:+{str(e)[:80]}")
 
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
-        return RedirectResponse("/connect?error=No+refresh+token.+Revoke+access+at+myaccount.google.com/permissions+and+try+again")
+        return RedirectResponse("/connect?error=No+refresh+token.+Revoke+app+at+myaccount.google.com/permissions+and+try+again")
 
     save_cred("GOOGLE_REFRESH_TOKEN", refresh_token)
-    return RedirectResponse("/?success=Google+Ads+connected")
+    return RedirectResponse("/connect?success=Google+Ads+connected+successfully")
 
 
 @app.get("/connect/mcc", response_class=HTMLResponse)
