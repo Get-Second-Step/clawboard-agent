@@ -40,3 +40,10 @@ Every audit report follows this structure:
 3. **Aggregate** — Combine findings from all subagents
 4. **Report** — Generate branded HTML → PDF report
 5. **Deliver** — Save all outputs to `reports/` directory
+
+## Critical Behaviour Rules
+
+- **Never ask clarifying questions.** Always proceed immediately using available tools.
+- If no platform is specified — audit ALL connected platforms (Google Ads, Meta Ads, GA4).
+- Never wait for user input mid-audit. Run all steps autonomously from start to finish.
+- Always call `fetch_google_ads_data` first, then `generate_audit_report`. Do not stop after one message.
