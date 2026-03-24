@@ -38,6 +38,15 @@ if ! command -v python3 &>/dev/null; then
     else
         die "Cannot install Python automatically. Please install Python $PYTHON_VERSION manually."
     fi
+else
+    # Ensure python3-venv is available (required on Debian/Ubuntu)
+    if command -v apt-get &>/dev/null; then
+        PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        if ! python3 -m venv --help &>/dev/null 2>&1; then
+            info "Installing python${PY_VER}-venv..."
+            sudo apt-get install -y -qq python${PY_VER}-venv
+        fi
+    fi
 fi
 success "Python: $(python3 --version)"
 
