@@ -822,13 +822,13 @@ async def connect_page(request: Request, success: str = "", error: str = ""):
 @app.post("/connect/google_ads/manual")
 async def google_manual_connect(request: Request):
     form = await request.form()
-    save_cred("GOOGLE_ADS_DEVELOPER_TOKEN", form.get("developer_token", ""))
-    save_cred("GOOGLE_ADS_CUSTOMER_ID", form.get("customer_id", "").replace("-", ""))
-    save_cred("GOOGLE_CLIENT_ID", form.get("client_id", "").strip())
-    save_cred("GOOGLE_CLIENT_SECRET", form.get("client_secret", "").strip())
-
-    c = creds()
-    client_id = c.get("GOOGLE_CLIENT_ID", "")
+    # Use form values directly — avoids stale file read after save
+    client_id     = str(form.get("client_id", "")).strip()
+    client_secret = str(form.get("client_secret", "")).strip()
+    save_cred("GOOGLE_ADS_DEVELOPER_TOKEN", str(form.get("developer_token", "")))
+    save_cred("GOOGLE_ADS_CUSTOMER_ID", str(form.get("customer_id", "")).replace("-", ""))
+    save_cred("GOOGLE_CLIENT_ID", client_id)
+    save_cred("GOOGLE_CLIENT_SECRET", client_secret)
 
     redirect_uri = "https://clawboard.pro/callback/google"
     save_cred("_OAUTH_REDIRECT_URI", redirect_uri)
