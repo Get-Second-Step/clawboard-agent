@@ -612,30 +612,53 @@ async def connect_page(request: Request, success: str = "", error: str = ""):
         disabled = ' style="opacity:0.4;pointer-events:none;"' if at_limit else ""
         google_card = f"""
         <div class="panel" {disabled}>
-          <div class="section-label" style="margin-bottom:14px;">Connect Google Ads</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px;">Connect Google Ads</div>
+          <div style="font-size:13px;color:#8b8fa8;margin-bottom:20px;">3 steps · takes about 5 minutes the first time</div>
           <form method="POST" action="/connect/google_ads/manual">
-            <div class="grid-2" style="gap:12px;background:none;">
-              <div class="form-group">
-                <label class="form-label">Developer Token</label>
-                <input class="form-input" name="developer_token" placeholder="ABcd1234efgh5678" required>
-                <div class="form-hint">Google Ads → Tools → API Center</div>
+
+            <div style="display:flex;flex-direction:column;gap:20px;">
+
+              <!-- Step 1 -->
+              <div style="display:flex;gap:14px;">
+                <div style="flex-shrink:0;width:28px;height:28px;border-radius:50%;background:#e87811;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;">1</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Your Google Ads account number</div>
+                  <input class="form-input" name="customer_id" placeholder="123-456-7890" required>
+                  <div class="form-hint">Top-right corner of your Google Ads dashboard (e.g. 316-669-4225)</div>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Customer ID (Account)</label>
-                <input class="form-input" name="customer_id" placeholder="123-456-7890" required>
+
+              <!-- Step 2 -->
+              <div style="display:flex;gap:14px;">
+                <div style="flex-shrink:0;width:28px;height:28px;border-radius:50%;background:#e87811;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;">2</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:13px;margin-bottom:2px;">Developer Token</div>
+                  <div style="font-size:12px;color:#8b8fa8;margin-bottom:8px;">Google Ads → Tools &amp; Settings → API Center → copy "Developer token"</div>
+                  <input class="form-input" name="developer_token" placeholder="Paste your developer token" required>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">OAuth Client ID</label>
-                <input class="form-input" name="client_id" placeholder="xxxx.apps.googleusercontent.com" required>
+
+              <!-- Step 3 -->
+              <div style="display:flex;gap:14px;">
+                <div style="flex-shrink:0;width:28px;height:28px;border-radius:50%;background:#e87811;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;">3</div>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:13px;margin-bottom:2px;">Google Cloud OAuth credentials</div>
+                  <div style="font-size:12px;color:#8b8fa8;margin-bottom:8px;">
+                    <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#e87811;">console.cloud.google.com</a> → Create OAuth 2.0 Client ID (Desktop app type) → copy Client ID &amp; Secret.<br>
+                    Add <strong style="color:#f0f0f2;">{get_server_base(request)}/callback/google</strong> as an authorised redirect URI.
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <input class="form-input" name="client_id" placeholder="Client ID  (xxxx.apps.googleusercontent.com)" required>
+                    <input class="form-input" name="client_secret" placeholder="Client Secret  (GOCSPX-...)" required>
+                  </div>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">OAuth Client Secret</label>
-                <input class="form-input" name="client_secret" placeholder="GOCSPX-..." required>
-              </div>
+
             </div>
-            <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
-              <button type="submit" class="btn btn-primary">Save &amp; Authorise Google →</button>
-              <span style="font-size:12px;color:#4a4d5e;">You'll be redirected to Google to authorise access</span>
+
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #2a2d3e;display:flex;align-items:center;gap:12px;">
+              <button type="submit" class="btn btn-primary" style="font-size:14px;padding:10px 22px;">Connect with Google →</button>
+              <span style="font-size:12px;color:#4a4d5e;">You'll be redirected to Google to approve access, then auto-returned here</span>
             </div>
           </form>
         </div>"""
