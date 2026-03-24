@@ -79,31 +79,20 @@ success "Repo ready at $INSTALL_DIR"
 cd "$INSTALL_DIR"
 info "Setting up Python virtual environment..."
 VENV_DIR="$INSTALL_DIR/.venv"
-if command -v uv &>/dev/null; then
-    uv venv "$VENV_DIR" -q
-else
-    python3 -m venv "$VENV_DIR"
-fi
+python3 -m venv "$VENV_DIR"
 VENV_PYTHON="$VENV_DIR/bin/python"
 VENV_PIP="$VENV_DIR/bin/pip"
+# Upgrade pip inside the venv silently
+"$VENV_PIP" install --upgrade pip -q
 success "Virtualenv ready at $VENV_DIR"
 
 info "Installing Python dependencies..."
-if command -v uv &>/dev/null; then
-    uv pip install --python "$VENV_PYTHON" -r requirements.txt -q
-else
-    "$VENV_PIP" install -r requirements.txt -q
-fi
+"$VENV_PIP" install -r requirements.txt -q
 
 # Install NemoClaw dependencies (guardrails security layer)
 info "Installing NemoClaw security layer..."
-if command -v uv &>/dev/null; then
-    uv pip install --python "$VENV_PYTHON" fastapi uvicorn "nemoguardrails>=0.8.0" pydantic langchain-google-genai -q 2>/dev/null || \
-        warn "NemoClaw optional deps skipped — will run in validation-only mode"
-else
-    "$VENV_PIP" install fastapi uvicorn "nemoguardrails>=0.8.0" pydantic langchain-google-genai -q 2>/dev/null || \
-        warn "NemoClaw optional deps skipped — will run in validation-only mode"
-fi
+"$VENV_PIP" install fastapi uvicorn "nemoguardrails>=0.8.0" pydantic langchain-google-genai -q 2>/dev/null || \
+    warn "NemoClaw optional deps skipped — will run in validation-only mode"
 success "Dependencies installed"
 
 # ── 4. Credentials setup — BYOK wizard ───────────────────────────────────────
