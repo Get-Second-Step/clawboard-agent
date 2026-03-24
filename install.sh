@@ -42,10 +42,8 @@ else
     # Ensure python3-venv is available (required on Debian/Ubuntu)
     if command -v apt-get &>/dev/null; then
         PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-        if ! python3 -m venv --help &>/dev/null 2>&1; then
-            info "Installing python${PY_VER}-venv..."
-            sudo apt-get install -y -qq python${PY_VER}-venv
-        fi
+        info "Ensuring python${PY_VER}-venv is installed..."
+        sudo apt-get install -y -qq python${PY_VER}-venv 2>/dev/null || true
     fi
 fi
 success "Python: $(python3 --version)"
