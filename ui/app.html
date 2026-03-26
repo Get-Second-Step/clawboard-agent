@@ -233,6 +233,51 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .danger-btn{padding:8px 16px;background:transparent;border:1px solid rgba(240,82,82,0.35);color:var(--red);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;transition:all 0.13s;}
 .danger-btn:hover{background:var(--red-s);}
 
+/* ── Agent avatar ── */
+.agent-avatar{font-size:20px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border-radius:8px;flex-shrink:0;}
+
+/* ── Mission Control ── */
+.mc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:24px;}
+.agent-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color 0.15s;}
+.agent-card:hover{border-color:var(--border2);}
+.agent-card-top{padding:18px 18px 12px;display:flex;align-items:flex-start;gap:14px;}
+.agent-big-avatar{width:48px;height:48px;font-size:26px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--surface2);flex-shrink:0;}
+.agent-card-meta{flex:1;}
+.agent-card-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.02em;}
+.agent-card-role{font-size:11.5px;color:var(--text3);margin-top:2px;}
+.agent-card-body{padding:0 18px 14px;font-size:12.5px;color:var(--text2);line-height:1.6;}
+.agent-card-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.agent-status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0;}
+.agent-status-label{font-size:11.5px;color:var(--text3);flex:1;}
+.agent-run-btn{padding:6px 14px;background:var(--amber);color:#0b0c11;border:none;border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.13s;}
+.agent-run-btn:hover{background:#fbb53d;}
+.agent-run-btn:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;}
+
+/* Task assignment modal */
+.task-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:900;align-items:center;justify-content:center;}
+.task-modal.open{display:flex;}
+.task-box{background:var(--surface);border:1px solid var(--border2);border-radius:14px;width:460px;max-width:90vw;overflow:hidden;}
+.task-box-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.task-box-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;flex:1;}
+.task-box-body{padding:20px;}
+.task-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.task-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;resize:vertical;min-height:90px;}
+.task-input:focus{outline:none;border-color:var(--amber);}
+.task-box-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.task-cancel{padding:8px 16px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.task-submit{padding:8px 18px;background:var(--amber);color:#0b0c11;border:none;border-radius:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+
+/* Connection channels */
+.channel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:16px;}
+.channel-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color 0.13s;}
+.channel-card:hover{border-color:var(--border2);}
+.channel-icon{font-size:24px;width:40px;text-align:center;}
+.channel-info{}
+.channel-name{font-size:13.5px;font-weight:700;}
+.channel-status{font-size:11.5px;color:var(--text3);margin-top:2px;}
+.channel-card.connected{border-color:rgba(52,209,122,0.3);}
+.channel-card.connected .channel-status{color:var(--green);}
+
 /* ── Toast ── */
 .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
 .toast{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 16px;font-size:13px;color:var(--text);min-width:230px;box-shadow:0 8px 30px rgba(0,0,0,0.4);opacity:0;transform:translateY(10px);transition:all 0.22s;pointer-events:auto;}
@@ -269,6 +314,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
     <div class="nav-group">
       <div class="nav-group-label">Workspace</div>
       <div class="nav-item active" onclick="nav('dashboard')"><span class="nav-icon">⊞</span>Dashboard</div>
+      <div class="nav-item" onclick="nav('mission')"><span class="nav-icon">🎮</span>Mission Control</div>
       <div class="nav-item" onclick="nav('chat')"><span class="nav-icon">💬</span>Chat Agent</div>
     </div>
 
@@ -339,22 +385,31 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 
           <!-- Agents -->
           <div class="card span2">
-            <div class="card-head"><div class="card-title">Agents</div><div class="card-action" onclick="nav('chat')">Open Chat →</div></div>
+            <div class="card-head"><div class="card-title">Agent Roster</div><div class="card-action" onclick="nav('mission')">Mission Control →</div></div>
             <div class="card-body" style="padding:0 20px;">
               <div class="agent-row">
-                <div class="agent-info"><div class="agent-name">Audit Agent</div><div class="agent-desc">122 checks · Google Ads, Meta Ads, GA4</div></div>
+                <div class="agent-avatar" style="color:#ff5722">🔱</div>
+                <div class="agent-info"><div class="agent-name">Shiva <span style="color:var(--text3);font-weight:400;font-size:12px">· Google Ads</span></div><div class="agent-desc">74 checks · Destroyer of Waste</div></div>
                 <span class="chip idle">Idle</span>
-                <button class="tiny-btn" onclick="runAudit()">Run →</button>
+                <button class="tiny-btn" onclick="runNamedAgent('shiva')">Run →</button>
               </div>
               <div class="agent-row">
-                <div class="agent-info"><div class="agent-name">Listen Agent</div><div class="agent-desc">Real-time budget & anomaly alerts</div></div>
-                <span class="chip locked">Pro Only</span>
-                <button class="tiny-btn" onclick="openUpgrade()">Upgrade</button>
+                <div class="agent-avatar" style="color:#9c27b0">🌸</div>
+                <div class="agent-info"><div class="agent-name">Brahma <span style="color:var(--text3);font-weight:400;font-size:12px">· Meta Ads</span></div><div class="agent-desc">46 checks · Creator of Audiences</div></div>
+                <span class="chip idle">Idle</span>
+                <button class="tiny-btn" onclick="runNamedAgent('brahma')">Run →</button>
               </div>
               <div class="agent-row">
-                <div class="agent-info"><div class="agent-name">CEO Agent</div><div class="agent-desc">Weekly executive brief via Telegram</div></div>
-                <span class="chip locked">Pro Only</span>
-                <button class="tiny-btn" onclick="openUpgrade()">Upgrade</button>
+                <div class="agent-avatar" style="color:#2196f3">🌊</div>
+                <div class="agent-info"><div class="agent-name">Vishnu <span style="color:var(--text3);font-weight:400;font-size:12px">· GA4 Analytics</span></div><div class="agent-desc">30 checks · Preserver of Data</div></div>
+                <span class="chip idle">Idle</span>
+                <button class="tiny-btn" onclick="runNamedAgent('vishnu')">Run →</button>
+              </div>
+              <div class="agent-row">
+                <div class="agent-avatar" style="color:#ff9800">🏹</div>
+                <div class="agent-info"><div class="agent-name">Arjuna <span style="color:var(--text3);font-weight:400;font-size:12px">· Budget & Bidding</span></div><div class="agent-desc">Precision spend · 3x Kill Rule</div></div>
+                <span class="chip idle">Idle</span>
+                <button class="tiny-btn" onclick="runNamedAgent('arjuna')">Run →</button>
               </div>
             </div>
           </div>
@@ -511,6 +566,172 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
       </div>
     </div>
 
+    <!-- MISSION CONTROL -->
+    <div class="view" id="view-mission">
+      <div style="flex:1;overflow-y:auto;">
+        <div style="padding:24px 24px 8px;">
+          <h2 style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.03em;">Mission Control</h2>
+          <p style="color:var(--text3);font-size:13px;margin-top:5px;">Your AI agent team — assign tasks, run audits, connect channels.</p>
+        </div>
+
+        <!-- Agent Cards -->
+        <div class="mc-grid">
+
+          <div class="agent-card">
+            <div class="agent-card-top">
+              <div class="agent-big-avatar" style="color:#ff5722;">🔱</div>
+              <div class="agent-card-meta">
+                <div class="agent-card-name">Shiva</div>
+                <div class="agent-card-role">Google Ads · Destroyer of Waste</div>
+              </div>
+            </div>
+            <div class="agent-card-body">74-point audit covering Conversion Tracking, Wasted Spend, PMax Deep Dive, Quality Score, Ads & Assets. Returns Health Score + monthly $ wasted estimate.</div>
+            <div class="agent-card-footer">
+              <div class="agent-status-dot"></div>
+              <span class="agent-status-label">Ready</span>
+              <button class="agent-run-btn" onclick="openTaskModal('shiva','Shiva','🔱')">Assign Task →</button>
+            </div>
+          </div>
+
+          <div class="agent-card">
+            <div class="agent-card-top">
+              <div class="agent-big-avatar" style="color:#9c27b0;">🌸</div>
+              <div class="agent-card-meta">
+                <div class="agent-card-name">Brahma</div>
+                <div class="agent-card-role">Meta Ads · Creator of Audiences</div>
+              </div>
+            </div>
+            <div class="agent-card-body">46-point audit: Pixel/CAPI health (EMQ ≥8.0), creative fatigue detection, Advantage+ assessment, learning phase health, audience overlap analysis.</div>
+            <div class="agent-card-footer">
+              <div class="agent-status-dot"></div>
+              <span class="agent-status-label">Ready</span>
+              <button class="agent-run-btn" onclick="openTaskModal('brahma','Brahma','🌸')">Assign Task →</button>
+            </div>
+          </div>
+
+          <div class="agent-card">
+            <div class="agent-card-top">
+              <div class="agent-big-avatar" style="color:#2196f3;">🌊</div>
+              <div class="agent-card-meta">
+                <div class="agent-card-name">Vishnu</div>
+                <div class="agent-card-role">GA4 Analytics · Preserver of Data</div>
+              </div>
+            </div>
+            <div class="agent-card-body">30-point GA4 audit: event tracking, conversion setup, attribution model, data quality filters, cross-domain tracking, BigQuery export, integrations.</div>
+            <div class="agent-card-footer">
+              <div class="agent-status-dot"></div>
+              <span class="agent-status-label">Ready</span>
+              <button class="agent-run-btn" onclick="openTaskModal('vishnu','Vishnu','🌊')">Assign Task →</button>
+            </div>
+          </div>
+
+          <div class="agent-card">
+            <div class="agent-card-top">
+              <div class="agent-big-avatar" style="color:#ff9800;">🏹</div>
+              <div class="agent-card-meta">
+                <div class="agent-card-name">Arjuna</div>
+                <div class="agent-card-role">Budget & Bidding · Precision Spend</div>
+              </div>
+            </div>
+            <div class="agent-card-body">70/20/10 budget framework audit, bidding strategy maturity check, 3x Kill Rule enforcement, learning phase health, safe scaling protocol.</div>
+            <div class="agent-card-footer">
+              <div class="agent-status-dot"></div>
+              <span class="agent-status-label">Ready</span>
+              <button class="agent-run-btn" onclick="openTaskModal('arjuna','Arjuna','🏹')">Assign Task →</button>
+            </div>
+          </div>
+
+          <div class="agent-card">
+            <div class="agent-card-top">
+              <div class="agent-big-avatar" style="color:#4caf50;">🎯</div>
+              <div class="agent-card-meta">
+                <div class="agent-card-name">Saraswati</div>
+                <div class="agent-card-role">Campaign Strategy · Knowledge</div>
+              </div>
+            </div>
+            <div class="agent-card-body">ICP definition, platform selection matrix, campaign architecture with naming conventions, 90-day launch roadmap, creative briefs, industry templates.</div>
+            <div class="agent-card-footer">
+              <div class="agent-status-dot"></div>
+              <span class="agent-status-label">Ready</span>
+              <button class="agent-run-btn" onclick="openTaskModal('saraswati','Saraswati','🎯')">Assign Task →</button>
+            </div>
+          </div>
+
+          <div class="agent-card">
+            <div class="agent-card-top">
+              <div class="agent-big-avatar" style="color:#e87811;">💰</div>
+              <div class="agent-card-meta">
+                <div class="agent-card-name">Lakshmi</div>
+                <div class="agent-card-role">Reports · Turns Findings into Fortune</div>
+              </div>
+            </div>
+            <div class="agent-card-body">Aggregates findings from all agents → weighted Ads Health Score → branded dark-theme PDF report with prioritized action plan sorted by Impact × Speed ÷ Effort.</div>
+            <div class="agent-card-footer">
+              <div class="agent-status-dot"></div>
+              <span class="agent-status-label">Ready</span>
+              <button class="agent-run-btn" onclick="openTaskModal('lakshmi','Lakshmi','💰')">Generate Report →</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Connection Channels -->
+        <div style="padding:8px 24px 24px;">
+          <h3 style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px;">Connection Channels</h3>
+          <p style="color:var(--text3);font-size:12.5px;">Receive agent reports and send tasks directly from your preferred app.</p>
+          <div class="channel-grid">
+            <div class="channel-card connected" id="ch-telegram" onclick="nav('settings')">
+              <div class="channel-icon">✈️</div>
+              <div class="channel-info">
+                <div class="channel-name">Telegram</div>
+                <div class="channel-status" id="ch-telegram-status">Connected ✓</div>
+              </div>
+            </div>
+            <div class="channel-card" id="ch-whatsapp" onclick="showToast('WhatsApp integration coming in Pro','info')">
+              <div class="channel-icon">💬</div>
+              <div class="channel-info">
+                <div class="channel-name">WhatsApp</div>
+                <div class="channel-status">Pro — Coming Soon</div>
+              </div>
+            </div>
+            <div class="channel-card" id="ch-slack" onclick="showToast('Slack integration coming in Pro','info')">
+              <div class="channel-icon">⚡</div>
+              <div class="channel-info">
+                <div class="channel-name">Slack</div>
+                <div class="channel-status">Pro — Coming Soon</div>
+              </div>
+            </div>
+            <div class="channel-card" id="ch-email" onclick="showToast('Email reports available now — set up in Settings','info')">
+              <div class="channel-icon">📧</div>
+              <div class="channel-info">
+                <div class="channel-name">Email</div>
+                <div class="channel-status">Configure in Settings</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task Assignment Modal -->
+    <div class="task-modal" id="task-modal">
+      <div class="task-box">
+        <div class="task-box-head">
+          <span id="task-modal-avatar" style="font-size:22px;">🔱</span>
+          <div class="task-box-title" id="task-modal-title">Assign Task to Shiva</div>
+          <button onclick="closeTaskModal()" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:4px;">✕</button>
+        </div>
+        <div class="task-box-body">
+          <div class="task-label">Task / Instructions</div>
+          <textarea class="task-input" id="task-input" placeholder="e.g. Audit Awign Google Ads account (ID: 123-456-7890) for the last 30 days. Focus on wasted spend and PMax performance."></textarea>
+        </div>
+        <div class="task-box-footer">
+          <button class="task-cancel" onclick="closeTaskModal()">Cancel</button>
+          <button class="task-submit" onclick="submitAgentTask()">Run Task →</button>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="view" id="view-settings">
       <div class="scroll-view" style="max-width:580px;">
@@ -562,8 +783,8 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 
 <script>
 // Nav
-const VIEWS=['dashboard','chat','connect','reports','settings'];
-const META={dashboard:['Dashboard','System overview'],chat:['Chat Agent','Talk to your ad accounts'],connect:['Connect','Link your ad platforms'],reports:['Reports','Generated audit reports'],settings:['Settings','Configure ClawBoard']};
+const VIEWS=['dashboard','mission','chat','connect','reports','settings'];
+const META={dashboard:['Dashboard','System overview'],mission:['Mission Control','Your AI agent team — Shiva · Brahma · Vishnu · Arjuna · Saraswati · Lakshmi'],chat:['Chat Agent','Talk to your ad accounts'],connect:['Connect','Link your ad platforms'],reports:['Reports','Generated audit reports'],settings:['Settings','Configure ClawBoard']};
 
 function nav(id){
   VIEWS.forEach(v=>{
@@ -704,6 +925,37 @@ async function saveGemini(){
 }
 
 function openUpgrade(){window.open('https://clawboard.pro/upgrade','_blank');}
+
+// ── Mission Control ──────────────────────────────────────────────────────────
+let _taskAgent = null;
+function openTaskModal(agentId, agentName, avatar){
+  _taskAgent = agentId;
+  document.getElementById('task-modal-avatar').textContent = avatar;
+  document.getElementById('task-modal-title').textContent = 'Assign Task to ' + agentName;
+  document.getElementById('task-input').value = '';
+  document.getElementById('task-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('task-input').focus(),80);
+}
+function closeTaskModal(){
+  document.getElementById('task-modal').classList.remove('open');
+  _taskAgent = null;
+}
+async function submitAgentTask(){
+  const task = document.getElementById('task-input').value.trim();
+  if(!task){showToast('Please enter a task description','error');return;}
+  closeTaskModal();
+  nav('chat');
+  // Pre-fill chat with agent task
+  const input = document.getElementById('chat-input');
+  if(input){
+    input.value = `[${_taskAgent||'agent'}] ${task}`;
+    input.focus();
+    showToast(`Task sent to ${_taskAgent} — switch to Chat to monitor`,'ok');
+  }
+}
+function runNamedAgent(agentId){
+  openTaskModal(agentId, agentId.charAt(0).toUpperCase()+agentId.slice(1), '▶');
+}
 
 // Toast
 function toast(msg,type='info'){

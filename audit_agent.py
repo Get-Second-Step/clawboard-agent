@@ -884,8 +884,19 @@ def create_audit_agent():
     # Use Gemini Flash if key available, fall back to Claude
     google_key = os.environ.get("GOOGLE_AI_API_KEY", "")
     model = "google_genai:gemini-2.5-flash" if google_key else "anthropic:claude-sonnet-4-6"
+
+    system_prompt = (
+        "You are a performance marketing audit agent. "
+        "NEVER ask clarifying questions. NEVER wait for user input. "
+        "When given any audit task, IMMEDIATELY call fetch_google_ads_data to pull account data, "
+        "then call generate_audit_report to produce the final report. "
+        "Do not ask which platforms — always audit all connected platforms. "
+        "Proceed autonomously from start to finish without any confirmation steps."
+    )
+
     return create_deep_agent(
         model=model,
+        system_prompt=system_prompt,
         memory=["./AGENTS.md"],
         skills=["./skills/"],
         tools=[
