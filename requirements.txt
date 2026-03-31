@@ -1,11 +1,11 @@
 # Deep Agents Google Ads - Python Dependencies
 
 # Core Framework
-# nemoguardrails 0.17.x requires langchain<0.4.0 — pin until nemo supports langchain 1.x
-langgraph>=0.2.0,<0.3.0
-langchain>=0.2.14,<0.4.0
-langchain-core>=0.2.14,<0.4.0
-langchain-anthropic>=0.1.0,<0.4.0
+# NemoClaw (nemoguardrails) runs in its own venv (.venv-nemo) to avoid
+# conflicts with langgraph-prebuilt which requires langchain-core>=1.0
+langgraph>=0.2.0
+langchain>=0.2.0
+langchain-anthropic>=0.1.0
 
 # Web server (connect page on port 3000)
 fastapi>=0.110.0

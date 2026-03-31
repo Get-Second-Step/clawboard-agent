@@ -101,10 +101,18 @@ success "Virtualenv ready at $VENV_DIR"
 info "Installing Python dependencies..."
 "$VENV_PIP" install -r requirements.txt -q
 
-# Install NemoClaw dependencies (guardrails security layer)
-info "Installing NemoClaw security layer..."
-# nemoguardrails 0.17.x requires langchain<0.4.0 — pin langchain-google-genai to stay compatible
-"$VENV_PIP" install fastapi uvicorn "nemoguardrails>=0.8.0" pydantic "langchain-google-genai>=1.0.0,<2.0.0" "langchain>=0.2.14,<0.4.0" "langchain-core>=0.2.14,<0.4.0" -q 2>/dev/null || \
+# Install NemoClaw in a SEPARATE venv to avoid langchain version conflicts
+# (nemoguardrails needs langchain<0.4.0; langgraph needs langchain>=1.0)
+info "Installing NemoClaw security layer (isolated venv)..."
+NEMO_VENV_DIR="$INSTALL_DIR/.venv-nemo"
+python3 -m venv "$NEMO_VENV_DIR"
+"$NEMO_VENV_DIR/bin/pip" install --upgrade pip -q
+"$NEMO_VENV_DIR/bin/pip" install fastapi uvicorn \
+    "nemoguardrails>=0.8.0" \
+    "langchain>=0.2.14,<0.4.0" \
+    "langchain-core>=0.2.14,<0.4.0" \
+    "langchain-google-genai>=1.0.0,<2.0.0" \
+    pydantic -q 2>/dev/null || \
     warn "NemoClaw optional deps skipped — will run in validation-only mode"
 success "Dependencies installed"
 
@@ -178,11 +186,11 @@ After=network.target
 Type=simple
 User=$CURRENT_USER
 WorkingDirectory=$INSTALL_DIR/nemoclaw
-ExecStart=$VENV_DIR/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8080
+ExecStart=$NEMO_VENV_DIR/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8080
 Restart=always
 RestartSec=5
 EnvironmentFile=-$INSTALL_DIR/config/credentials.env
-Environment=PATH=$VENV_DIR/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=$NEMO_VENV_DIR/bin:/usr/local/bin:/usr/bin:/bin
 Environment=LOG_LEVEL=info
 
 [Install]
@@ -195,9 +203,9 @@ EOF
     sleep 3
     success "NemoClaw security layer started (internal port 8080)"
 else
-    pkill -f "clawboard-nemoclaw" 2>/dev/null || true
-    env $(grep -v '^#' "$INSTALL_DIR/config/credentials.env" 2>/dev/null | xargs) \
-        nohup "$VENV_DIR/bin/python" -m uvicorn main:app --host 127.0.0.1 --port 8080 \
+    pkill -f "uvicorn main:app" 2>/dev/null || true
+    # cd into nemoclaw/ so uvicorn finds main.py
+    nohup bash -c "cd '$INSTALL_DIR/nemoclaw' && env \$(grep -v '^#' '$INSTALL_DIR/config/credentials.env' 2>/dev/null | xargs) '$NEMO_VENV_DIR/bin/python' -m uvicorn main:app --host 127.0.0.1 --port 8080" \
         > "$INSTALL_DIR/reports/nemoclaw.log" 2>&1 &
     sleep 3
     success "NemoClaw started (nohup, internal port 8080)"
