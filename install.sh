@@ -120,8 +120,9 @@ if [ -z "$EXISTING_GEMINI" ] || echo "$EXISTING_GEMINI" | grep -q "AIza\.\.\.\|y
     printf "  Enter your GOOGLE_AI_API_KEY: "
     read -r GEMINI_KEY </dev/tty
     if [ -n "$GEMINI_KEY" ]; then
-        sed -i "s|^GOOGLE_AI_API_KEY=.*|GOOGLE_AI_API_KEY=$GEMINI_KEY|" "$CREDS"
-        sed -i "s|^GOOGLE_API_KEY=.*|GOOGLE_API_KEY=$GEMINI_KEY|" "$CREDS"
+        SED_INPLACE=(-i); [[ "$(uname)" == "Darwin" ]] && SED_INPLACE=(-i '')
+        sed "${SED_INPLACE[@]}" "s|^GOOGLE_AI_API_KEY=.*|GOOGLE_AI_API_KEY=$GEMINI_KEY|" "$CREDS"
+        sed "${SED_INPLACE[@]}" "s|^GOOGLE_API_KEY=.*|GOOGLE_API_KEY=$GEMINI_KEY|" "$CREDS"
         success "Gemini API key saved"
     else
         warn "No key entered — NemoClaw will run in validation-only mode (no semantic rails)"
@@ -138,13 +139,13 @@ if [ -z "$EXISTING_AGENCY" ] || echo "$EXISTING_AGENCY" | grep -q "Your Agency";
     printf "  Your agency name (press Enter to skip): "
     read -r AGENCY_NAME_VAL </dev/tty
     if [ -n "$AGENCY_NAME_VAL" ]; then
-        sed -i "s|^AGENCY_NAME=.*|AGENCY_NAME=$AGENCY_NAME_VAL|" "$CREDS"
+        sed "${SED_INPLACE[@]}" "s|^AGENCY_NAME=.*|AGENCY_NAME=$AGENCY_NAME_VAL|" "$CREDS"
         printf "  Contact email (press Enter to skip): "
         read -r AGENCY_EMAIL_VAL </dev/tty
-        [ -n "$AGENCY_EMAIL_VAL" ] && sed -i "s|^AGENCY_EMAIL=.*|AGENCY_EMAIL=$AGENCY_EMAIL_VAL|" "$CREDS"
+        [ -n "$AGENCY_EMAIL_VAL" ] && sed "${SED_INPLACE[@]}" "s|^AGENCY_EMAIL=.*|AGENCY_EMAIL=$AGENCY_EMAIL_VAL|" "$CREDS"
         printf "  Website (press Enter to skip): "
         read -r AGENCY_WEB_VAL </dev/tty
-        [ -n "$AGENCY_WEB_VAL" ] && sed -i "s|^AGENCY_WEBSITE=.*|AGENCY_WEBSITE=$AGENCY_WEB_VAL|" "$CREDS"
+        [ -n "$AGENCY_WEB_VAL" ] && sed "${SED_INPLACE[@]}" "s|^AGENCY_WEBSITE=.*|AGENCY_WEBSITE=$AGENCY_WEB_VAL|" "$CREDS"
         success "Agency branding saved"
     fi
 fi
