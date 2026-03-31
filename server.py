@@ -62,7 +62,12 @@ def save_cred(key: str, value: str):
 def platform_status() -> dict:
     c = creds()
     def ok(*keys):
-        return all(c.get(k) and "your_" not in c.get(k, "your_") for k in keys)
+        def real(v):
+            if not v or len(v) < 8:
+                return False
+            placeholders = ("your_", "...", "xxx", "paste", "path/to", "123456")
+            return not any(p in v.lower() for p in placeholders)
+        return all(real(c.get(k, "")) for k in keys)
     return {
         "google_ads": ok("GOOGLE_ADS_DEVELOPER_TOKEN", "GOOGLE_REFRESH_TOKEN",
                          "GOOGLE_CLIENT_ID", "GOOGLE_ADS_CUSTOMER_ID"),
