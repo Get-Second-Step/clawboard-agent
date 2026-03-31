@@ -1,9 +1,10 @@
 models:
   - type: main
-    engine: google_genai
-    model: gemini-2.5-flash
+    engine: openai
+    model: nvidia/llama-3.1-nemotron-70b-instruct
     parameters:
       temperature: 0.0
+      openai_api_base: https://integrate.api.nvidia.com/v1
 
 rails:
   input:

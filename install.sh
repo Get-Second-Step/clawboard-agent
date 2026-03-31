@@ -111,7 +111,7 @@ python3 -m venv "$NEMO_VENV_DIR"
     "nemoguardrails>=0.8.0" \
     "langchain>=0.2.14,<0.4.0" \
     "langchain-core>=0.2.14,<0.4.0" \
-    "langchain-google-genai>=1.0.0,<2.0.0" \
+    "langchain-openai>=0.1.0,<0.2.0" \
     pydantic -q 2>/dev/null || \
     warn "NemoClaw optional deps skipped — will run in validation-only mode"
 success "Dependencies installed"
@@ -135,13 +135,35 @@ if [ -z "$EXISTING_GEMINI" ] || echo "$EXISTING_GEMINI" | grep -q "AIza\.\.\.\|y
     if [ -n "$GEMINI_KEY" ]; then
         SED_INPLACE=(-i); [[ "$(uname)" == "Darwin" ]] && SED_INPLACE=(-i '')
         sed "${SED_INPLACE[@]}" "s|^GOOGLE_AI_API_KEY=.*|GOOGLE_AI_API_KEY=$GEMINI_KEY|" "$CREDS"
-        sed "${SED_INPLACE[@]}" "s|^GOOGLE_API_KEY=.*|GOOGLE_API_KEY=$GEMINI_KEY|" "$CREDS"
-        success "Gemini API key saved"
+        success "Gemini API key saved (OpenClaw + Deep Agents)"
     else
-        warn "No key entered — NemoClaw will run in validation-only mode (no semantic rails)"
+        warn "No Gemini key — audit agents will run without an LLM backbone"
     fi
 else
     success "Gemini API key already configured"
+fi
+
+# ── NVIDIA API key (NemoClaw only) ────────────────────────────────────────────
+SED_INPLACE=(-i); [[ "$(uname)" == "Darwin" ]] && SED_INPLACE=(-i '')
+EXISTING_NVIDIA=$(grep "^NVIDIA_API_KEY=" "$CREDS" 2>/dev/null | cut -d= -f2 | tr -d '"' | xargs)
+if [ -z "$EXISTING_NVIDIA" ] || echo "$EXISTING_NVIDIA" | grep -q "nvapi-\.\.\.\|your_"; then
+    echo ""
+    echo -e "  ${YELLOW}NVIDIA API key${NC} (NemoClaw security layer — free at build.nvidia.com)"
+    printf "  Enter your NVIDIA_API_KEY (press Enter to skip): "
+    read -r NVIDIA_KEY </dev/tty
+    if [ -n "$NVIDIA_KEY" ]; then
+        # Add or update NVIDIA_API_KEY in credentials file
+        if grep -q "^NVIDIA_API_KEY=" "$CREDS"; then
+            sed "${SED_INPLACE[@]}" "s|^NVIDIA_API_KEY=.*|NVIDIA_API_KEY=$NVIDIA_KEY|" "$CREDS"
+        else
+            echo "NVIDIA_API_KEY=$NVIDIA_KEY" >> "$CREDS"
+        fi
+        success "NVIDIA API key saved (NemoClaw — Nemotron model)"
+    else
+        warn "No NVIDIA key — NemoClaw will run in validation-only mode"
+    fi
+else
+    success "NVIDIA API key already configured"
 fi
 
 # ── Agency branding (optional) ────────────────────────────────────────────────

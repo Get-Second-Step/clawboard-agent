@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 try:
     from nemoguardrails import RailsConfig, LLMRails
+    from langchain_openai import ChatOpenAI
     NEMO_AVAILABLE = True
 except ImportError:
     NEMO_AVAILABLE = False
@@ -30,22 +31,29 @@ except ImportError:
 logger = logging.getLogger("nemoclaw")
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "info").upper())
 
-# NeMo Guardrails (via LangChain Google GenAI) reads GOOGLE_API_KEY.
-# Accept GOOGLE_AI_API_KEY as an alias so users only need one key.
-if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GOOGLE_AI_API_KEY"):
-    os.environ["GOOGLE_API_KEY"] = os.environ["GOOGLE_AI_API_KEY"]
-
 app = FastAPI(title="NemoClaw", version="1.0.0", docs_url=None)
 
-# ── Load guardrails config ────────────────────────────────────────────────────
+# ── Load guardrails config with Nemotron as the LLM ──────────────────────────
+# NemoClaw uses NVIDIA Nemotron exclusively.
+# OpenClaw + Deep Agents use Gemini — completely separate key.
 rails = None
 if NEMO_AVAILABLE:
-    try:
-        config = RailsConfig.from_path("./config")
-        rails = LLMRails(config)
-        logger.info("NeMo Guardrails loaded successfully")
-    except Exception as e:
-        logger.warning(f"Could not load NeMo config: {e} — running in validation-only mode")
+    nvidia_api_key = os.environ.get("NVIDIA_API_KEY")
+    if not nvidia_api_key:
+        logger.warning("NVIDIA_API_KEY not set — NemoClaw running in validation-only mode")
+    else:
+        try:
+            nemotron_llm = ChatOpenAI(
+                model="nvidia/llama-3.1-nemotron-70b-instruct",
+                openai_api_base="https://integrate.api.nvidia.com/v1",
+                openai_api_key=nvidia_api_key,
+                temperature=0.0,
+            )
+            config = RailsConfig.from_path("./config")
+            rails = LLMRails(config, llm=nemotron_llm)
+            logger.info("NeMo Guardrails loaded — powered by NVIDIA Nemotron")
+        except Exception as e:
+            logger.warning(f"Could not load NeMo config: {e} — running in validation-only mode")
 
 
 # ── Request / Response models ─────────────────────────────────────────────────
@@ -107,6 +115,8 @@ async def health():
         "nemo_available": NEMO_AVAILABLE,
         "rails_loaded": rails is not None,
         "mode": "full_guardrails" if rails else "validation_only",
+        "llm": "nvidia/llama-3.1-nemotron-70b-instruct" if rails else None,
+        "nvidia_key_set": bool(os.environ.get("NVIDIA_API_KEY")),
     }
 
 
