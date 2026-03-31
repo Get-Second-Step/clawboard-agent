@@ -38,7 +38,7 @@ cp config/credentials.env.example config/credentials.env
 docker compose up -d
 ```
 
-Ubuntu 20.04+ · Python 3.11 · 1GB RAM minimum
+Ubuntu 20.04+ · Python 3.11 · 1GB RAM minimum · macOS supported (local testing)
 
 ---
 

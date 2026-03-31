@@ -472,6 +472,26 @@ tr:last-child td{border-bottom:none;}
       </div>
     </div>
 
+    <h3>Dependency conflict: langchain version mismatch</h3>
+    <p>If you see <code>nemoguardrails requires langchain&lt;0.4.0 but you have langchain 1.x</code>, your pip resolved a newer langchain before NemoClaw's constraints could apply. Fix:</p>
+    <div class="term-block">
+      <div class="term-block-bar"><div class="term-block-dots"><div class="term-dot r"></div><div class="term-dot y"></div><div class="term-dot g"></div></div></div>
+      <div class="term-content">
+        <span class="t-prompt">$</span> pip install "langchain>=0.2.14,<0.4.0" "langchain-core>=0.2.14,<0.4.0"
+      </div>
+    </div>
+
+    <h3>Installing on macOS (local testing)</h3>
+    <div class="callout callout-warn">
+      <strong>Note:</strong> ClawBoard is designed for VPS deployment. macOS is supported for local development and testing only.
+    </div>
+    <p>On macOS, the one-liner installer works but a few things differ:</p>
+    <ul>
+      <li>PDF generation requires <strong>Google Chrome</strong> — install via <code>brew install --cask google-chrome</code></li>
+      <li>Systemd is not available — services fall back to <strong>nohup</strong> automatically</li>
+      <li>UFW firewall commands are skipped automatically</li>
+    </ul>
+
     <h3>Audit returning sample data</h3>
     <p>This means your Google Ads credentials are not set correctly. Check <code>config/credentials.env</code> for any fields still containing <code>your_</code> placeholder values.</p>
 

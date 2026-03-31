@@ -67,7 +67,11 @@ success "git: $(git --version | head -1)"
 # Chrome / Chromium (for PDF generation)
 if ! command -v google-chrome &>/dev/null && ! command -v chromium-browser &>/dev/null && ! command -v chromium &>/dev/null; then
     warn "Chrome not found — PDF generation will be skipped (HTML reports still work)."
-    warn "To enable PDFs: sudo apt-get install -y chromium-browser"
+    if [[ "$(uname)" == "Darwin" ]]; then
+        warn "To enable PDFs on macOS: brew install --cask google-chrome"
+    else
+        warn "To enable PDFs: sudo apt-get install -y chromium-browser"
+    fi
 else
     success "Chrome/Chromium found"
 fi
@@ -99,7 +103,8 @@ info "Installing Python dependencies..."
 
 # Install NemoClaw dependencies (guardrails security layer)
 info "Installing NemoClaw security layer..."
-"$VENV_PIP" install fastapi uvicorn "nemoguardrails>=0.8.0" pydantic langchain-google-genai -q 2>/dev/null || \
+# nemoguardrails 0.17.x requires langchain<0.4.0 — pin langchain-google-genai to stay compatible
+"$VENV_PIP" install fastapi uvicorn "nemoguardrails>=0.8.0" pydantic "langchain-google-genai>=1.0.0,<2.0.0" "langchain>=0.2.14,<0.4.0" "langchain-core>=0.2.14,<0.4.0" -q 2>/dev/null || \
     warn "NemoClaw optional deps skipped — will run in validation-only mode"
 success "Dependencies installed"
 
