@@ -207,8 +207,16 @@ else
     # cd into nemoclaw/ so uvicorn finds main.py
     nohup bash -c "cd '$INSTALL_DIR/nemoclaw' && env \$(grep -v '^#' '$INSTALL_DIR/config/credentials.env' 2>/dev/null | xargs) '$NEMO_VENV_DIR/bin/python' -m uvicorn main:app --host 127.0.0.1 --port 8080" \
         > "$INSTALL_DIR/reports/nemoclaw.log" 2>&1 &
-    sleep 3
-    success "NemoClaw started (nohup, internal port 8080)"
+    sleep 4
+    # Verify NemoClaw actually started (pydantic v1 fails on Python >3.12)
+    if curl -sf http://127.0.0.1:8080/health >/dev/null 2>&1; then
+        success "NemoClaw started (nohup, internal port 8080)"
+    else
+        PY_VER=$("$NEMO_VENV_DIR/bin/python" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        warn "NemoClaw could not start (Python $PY_VER detected — nemoguardrails requires Python ≤3.12)"
+        warn "Workaround: use Docker Compose for full NemoClaw support"
+        warn "OpenClaw and Deep Agents still work — running without security guardrails"
+    fi
 fi
 
 # ── Start OpenClaw connect server (port 3000) ─────────────────────────────────

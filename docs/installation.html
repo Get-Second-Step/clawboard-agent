@@ -198,7 +198,7 @@ tr:last-child td{border-bottom:none;}
           <tr><td><strong>OS</strong></td><td>Ubuntu 20.04 LTS</td><td>Ubuntu 22.04 LTS</td></tr>
           <tr><td><strong>RAM</strong></td><td>1 GB</td><td>2 GB</td></tr>
           <tr><td><strong>Storage</strong></td><td>5 GB free</td><td>20 GB</td></tr>
-          <tr><td><strong>Python</strong></td><td>3.11</td><td>3.11 or 3.12</td></tr>
+          <tr><td><strong>Python</strong></td><td>3.11</td><td>3.11 or 3.12 (NemoClaw requires ≤3.12; Python 3.13+ = Docker only)</td></tr>
           <tr><td><strong>Port</strong></td><td>3000 open</td><td>3000 + 443 (HTTPS)</td></tr>
           <tr><td><strong>Docker</strong></td><td>Optional</td><td>Recommended for full stack</td></tr>
         </tbody>
@@ -470,6 +470,12 @@ tr:last-child td{border-bottom:none;}
         <span class="t-prompt">$</span> docker compose logs nemoclaw<br>
         <span class="t-prompt">$</span> docker compose restart nemoclaw
       </div>
+    </div>
+
+    <h3>NemoClaw fails on Python 3.13 / 3.14</h3>
+    <p>NemoClaw uses <strong>pydantic v1</strong> internally (via nemoguardrails) which is incompatible with Python 3.13+. OpenClaw and Deep Agents are unaffected.</p>
+    <div class="callout callout-warn">
+      <strong>Fix:</strong> Use Docker Compose for full NemoClaw support, or install Python 3.11/3.12 via <code>pyenv</code> and re-run the installer.
     </div>
 
     <h3>Dependency conflict: langchain version mismatch</h3>
